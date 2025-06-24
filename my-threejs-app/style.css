@@ -6,7 +6,7 @@
   --chat-header-bg: #262626;
   --chat-input-bg: #262626;
   --text: #e6e6e6;
-  --primary: #0077ff;
+  --primary:rgb(255, 132, 0);
   --bubble-bg: #2c2c2c;
   --scroll-thumb: #444;
   --radius: 6px;
@@ -158,9 +158,3 @@ body {
     height: 50vh;
   }
 }
-
-
-
-
-
-

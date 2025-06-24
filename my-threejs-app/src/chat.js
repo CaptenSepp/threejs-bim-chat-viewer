@@ -51,4 +51,7 @@ inputField.addEventListener('keydown', (e) => {
 
 /* ---------- Initial ---------- */
 updateSendButton();
-addMessage('Willkommen im Projekt-Chat!', 'System'); // optionale Systemnachricht
+addMessage('Hallo Martin.', 'System');
+addMessage('Hallo Jakob, wie kann ich dir helfen?', 'Du');
+addMessage('Ich habe eine Frage bezüglich dieses Teils des Models.', 'System');
+addMessage('Ja, natürlich, schieß los. Du kannst gerne darauf klicken und kommentieren.', 'Du');
