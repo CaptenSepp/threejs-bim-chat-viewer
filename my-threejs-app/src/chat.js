@@ -1,57 +1,90 @@
-/* Chat-Elemente abgreifen */
-const chatMessages = document.getElementById('chat-messages');
-const inputField   = document.getElementById('input-field');
-const sendBtn      = document.getElementById('send-btn');
+/* Chat-DOM-Elemente ------------------------------------------------------- */
+const chatMessages  = document.getElementById('chat-messages');
+const inputField    = document.getElementById('input-field');
+const sendBtn       = document.getElementById('send-btn');
+const refBox        = document.getElementById('chat-reference-container');
+const refText       = document.getElementById('chat-reference-text');
+const clearRefBtn   = document.getElementById('clear-reference-btn');
 
-/* ---------- Hilfsfunktionen ---------- */
-function updateSendButton() {
-  sendBtn.disabled = inputField.value.trim().length === 0;
+let currentRef = null;
+
+/* Hilfsfunktionen --------------------------------------------------------- */
+function adjustTextareaHeight() {
+  inputField.style.height = 'auto';
+  inputField.style.height = `${inputField.scrollHeight}px`;
+
+  const minH = parseFloat(getComputedStyle(document.documentElement)
+                .getPropertyValue('--input-min-height'));
+  sendBtn.style.height = `${Math.max(minH, inputField.clientHeight)}px`;
 }
-
-function addMessage(text, author = 'Du') {
-  const wrapper = document.createElement('div');
-  wrapper.classList.add('message-wrapper');
-  if (author === 'Du') wrapper.classList.add('self');
+function updateSendButton() {
+  sendBtn.disabled = inputField.value.trim() === '';
+  adjustTextareaHeight();
+}
+function addMessage(text, author='Du', objectRef=null) {
+  const wrap  = document.createElement('div');
+  wrap.className = `message-wrapper${author==='Du' ? ' self' : ''}`;
 
   const bubble = document.createElement('div');
-  bubble.classList.add('message');
-  bubble.textContent = text;
+  bubble.className = 'message';
+
+  if (objectRef) {
+    const span = document.createElement('span');
+    span.className = 'message-reference';
+    span.textContent = `Referenz: ${objectRef}`;
+    bubble.append(span);
+  }
+  bubble.append(text);
 
   const meta = document.createElement('div');
-  meta.classList.add('meta');
-  const timestamp = new Date().toLocaleTimeString('de-DE', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  meta.textContent = `${author} • ${timestamp}`;
+  meta.className = 'meta';
+  meta.textContent = `${author} • ${new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`;
 
-  wrapper.append(bubble, meta);
-  chatMessages.appendChild(wrapper);
+  wrap.append(bubble, meta);
+  chatMessages.append(wrap);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
-
-function handleSend() {
+function send() {
   const msg = inputField.value.trim();
   if (!msg) return;
-  addMessage(msg, 'Du');
+  addMessage(msg, 'Du', currentRef);
   inputField.value = '';
+  clearRef();
   updateSendButton();
 }
 
-/* ---------- Event-Listener ---------- */
-inputField.addEventListener('input', updateSendButton);
-sendBtn.addEventListener('click', handleSend);
+/* Objekt-Referenz-API ----------------------------------------------------- */
+function setRef(name) {
+  currentRef = name;
+  refText.textContent = `Referenz: ${name}`;
+  refBox.classList.remove('hidden');
+  inputField.focus();
+  adjustTextareaHeight();
+}
+function clearRef() {
+  currentRef = null;
+  refBox.classList.add('hidden');
+  refText.textContent = '';
+  adjustTextareaHeight();
+}
 
+/* Event-Listener ---------------------------------------------------------- */
+inputField.addEventListener('input', updateSendButton);
 inputField.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    handleSend();
+    send();
   }
 });
+sendBtn.addEventListener('click', send);
+clearRefBtn.addEventListener('click', clearRef);
 
-/* ---------- Initial ---------- */
+/* Initialisierung --------------------------------------------------------- */
 updateSendButton();
 addMessage('Hallo Martin.', 'System');
 addMessage('Hallo Jakob, wie kann ich dir helfen?', 'Du');
 addMessage('Ich habe eine Frage bezüglich dieses Teils des Models.', 'System');
 addMessage('Ja, natürlich, schieß los. Du kannst gerne darauf klicken und kommentieren.', 'Du');
+
+/* Globale API für Three.js ----------------------------------------------- */
+window.chatAPI = { setObjectReferenceForChat: setRef, clearObjectReference: clearRef };
