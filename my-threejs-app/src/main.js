@@ -12,12 +12,17 @@ const scene  = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75,1,0.1,1000);
 camera.position.z = 4;
 scene.add(camera);
-// scene.add(AmbientLight);
+
+/* Licht --------------------------------------------------------------- */
+const light = new THREE.DirectionalLight(0xffffff, 1.5);
+light.position.set(5, 5, 5);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0x404040,3));
 
 /* Beispiel-Würfel --------------------------------------------------------- */
 const cube = new THREE.Mesh(
   new THREE.BoxGeometry(1,1,1),
-  new THREE.MeshStandardMaterial({ color:0xffa500, roughness:.5, metalness:.8 })
+  new THREE.MeshStandardMaterial({ color:0xffa500, roughness:.9, metalness: 1 })
 );
 cube.name = 'Gebäudeteil: Würfel A';
 scene.add(cube);
