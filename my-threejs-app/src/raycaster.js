@@ -1,4 +1,4 @@
-import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
+import * as THREE from 'three';
 
 /**
  * Verbindet Ray-Picking mit der Chat-API.
@@ -26,3 +26,4 @@ export function initRaycaster(scene, camera, canvas) {
   }
   canvas.addEventListener('pointerdown', onPointerDown, false);
 }
+
