@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { initRaycaster } from './raycaster.js';
+import { loadIfcModel } from './ifcLoader.js';
 
 /* Canvas + Renderer ------------------------------------------------------- */
 const canvas = document.getElementById('three-canvas');
@@ -20,19 +21,14 @@ scene.add(light);
 scene.add(new THREE.AmbientLight(0x404040,3));
 
 /* Beispiel-Würfel --------------------------------------------------------- */
-const cube = new THREE.Mesh(
-  new THREE.BoxGeometry(1,1,1),
-  new THREE.MeshStandardMaterial({ color:0xffa500, roughness:.9, metalness: 1 })
-);
-cube.name = 'Gebäudeteil: Würfel A';
-scene.add(cube);
-
-/* Licht ------------------------------------------------------------------- */
-scene.add(new THREE.DirectionalLight(0xffffff,1.5).position.set(5,5,5));
-scene.add(new THREE.AmbientLight(0x404040,1));
+// const cube = new THREE.Mesh(
+//   new THREE.BoxGeometry(1,1,1),
+//   new THREE.MeshStandardMaterial({ color:0xffa500, roughness:.9, metalness: 1 })
+// );
+// cube.name = 'Gebäudeteil: Würfel A';
+// scene.add(cube);
 
 /* Ray-Picker -------------------------------------------------------------- */
-initRaycaster(scene, camera, canvas);
 
 /* Resize-Handling --------------------------------------------------------- */
 function onResize(){
@@ -52,10 +48,20 @@ window.addEventListener('resize', onResize);
 onResize();
 
 /* Animation-Loop ---------------------------------------------------------- */
-function animate(){
-  requestAnimationFrame(animate);
-  cube.rotation.x += 0.005;
-  cube.rotation.y += 0.005;
-  renderer.render(scene,camera);
-}
-animate();
+// function animate(){
+//   requestAnimationFrame(animate);
+//   cube.rotation.x += 0.005;
+//   cube.rotation.y += 0.005;
+//   renderer.render(scene,camera);
+// }
+// animate();
+
+initRaycaster(scene, camera, canvas);
+window.addEventListener('resize', onResize);
+onResize();
+
+/* IFC-Modell laden --------------------------------*/
+await loadIfcModel(scene, camera);   // <–– Modell ist jetzt da
+
+/* Zeichnen ----------------------------------------*/
+renderer.setAnimationLoop(()=>renderer.render(scene, camera));
