@@ -1,38 +1,42 @@
+/* ------------------------------------------------- *
+ *  Lädt ein IFC-Modell und übergibt es der World
+ * ------------------------------------------------- */
 import * as OBC from '@thatopen/components';
-import * as THREE from 'three';
 
-export async function loadIfcModel(scene, camera, url = '/small.ifc') {
+const WASM_CDN = 'https://unpkg.com/web-ifc@0.0.68/';
+const WORKER = 'https://cdn.jsdelivr.net/npm/@thatopen/components@2.4.11/dist/fragment.worker.js';
 
-  const components = new OBC.Components();
-  components.scene = scene;
-  components.camera = camera;
-  components.init();
+export async function loadIfcModel(components, url = '/small.ifc') {
+  /* Fragments-Manager gemäss Doku */
+  const fragments = components.get(OBC.FragmentsManager);
+  fragments.init(WORKER);
 
+  /* IfcLoader konfigurieren */
   const ifcLoader = components.get(OBC.IfcLoader);
-  await ifcLoader.setup();
+  await ifcLoader.setup({
+    autoSetWasm: false,
+    wasm: { path: WASM_CDN, absolute: true }
+  });
 
-  const buffer = await (await fetch(url)).arrayBuffer();
+
+  /* Model nach Laden in Szene einhängen */
+  // fragments.list.onItemSet.add(({ value: model }) => {
+  //   const world = components.get(OBC.Worlds).current;
+  //   model.useCamera(world.camera.three);
+  //   world.scene.three.add(model.object);
+  //   fragments.core.update(true);
+  // });
+
+  const world = components.get(OBC.Worlds).current;
+
+  /* nur eine einzige Zeile zum Laden + Rückgabe nutzen */
   const model = await ifcLoader.load(new Uint8Array(buffer));
 
-  model.traverse((o) => {
-    if (o.isMesh && !o.name) o.name = `IFC-${o.userData.expressID}`;
-  });
-  scene.add(model);
+  model.useCamera(world.camera.three);
+  world.scene.three.add(model.object);
+  components.get(OBC.FragmentsManager).core.update(true);
 
-  // const cameraUtils = components.get(OBC.CameraUtils);
-  // cameraUtils.fitToSelection(model);
-
-  /* Kamera grob einpassen ------------------------- */
-  const box = new THREE.Box3().setFromObject(model);
-  const size = box.getSize(new THREE.Vector3());
-  const center = box.getCenter(new THREE.Vector3());
-
-  camera.position.set(
-    center.x,
-    center.y + size.y,
-    center.z + size.z * 2
-  );
-  camera.lookAt(center);
-
-  return model;
+  /* IFC laden */
+  const buffer = await (await fetch(url)).arrayBuffer();
+  await ifcLoader.load(new Uint8Array(buffer));
 }

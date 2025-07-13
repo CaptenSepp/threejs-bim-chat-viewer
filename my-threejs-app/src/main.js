@@ -1,65 +1,40 @@
+/* ------------------------------------------------- *
+ *  Haupt-Bootstrap: erstellt World + lädt IFC
+ * ------------------------------------------------- */
 import * as THREE from 'three';
-import { initRaycaster } from './raycaster.js';
+import * as OBC   from '@thatopen/components';
 import { loadIfcModel } from './ifcLoader.js';
+import { initRaycaster } from './raycaster.js';
 
-/* Canvas + Renderer ------------------------------------------------------- */
 const canvas = document.getElementById('three-canvas');
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
-renderer.setClearColor(0x141414);
+/* 1. Komponenten-Container */
+const components = new OBC.Components();
 
-/* Szene & Kamera ---------------------------------------------------------- */
-const scene  = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75,1,0.1,1000);
-camera.position.z = 4;
-scene.add(camera);
+/* 2. Neue World (Scene / Camera / Renderer) */
+const worlds = components.get(OBC.Worlds);
+const world  = worlds.create();         // SimpleScene, SimpleCamera, SimpleRenderer
 
-/* Licht --------------------------------------------------------------- */
-const light = new THREE.DirectionalLight(0xffffff, 1.5);
-light.position.set(5, 5, 5);
-scene.add(light);
-scene.add(new THREE.AmbientLight(0x404040,3));
+world.scene    = new OBC.SimpleScene(components);
+world.camera   = new OBC.SimpleCamera(components);
+world.renderer = new OBC.SimpleRenderer(components, canvas);
 
-/* Beispiel-Würfel --------------------------------------------------------- */
-// const cube = new THREE.Mesh(
-//   new THREE.BoxGeometry(1,1,1),
-//   new THREE.MeshStandardMaterial({ color:0xffa500, roughness:.9, metalness: 1 })
-// );
-// cube.name = 'Gebäudeteil: Würfel A';
-// scene.add(cube);
+/* 3. Licht */
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(5, 5, 5);
+world.scene.three.add(dirLight, new THREE.AmbientLight(0x404040, 2));
 
-/* Ray-Picker -------------------------------------------------------------- */
+/* 4. Grid (optional aus Doku) */
+components.get(OBC.Grids).create(world);
 
-/* Resize-Handling --------------------------------------------------------- */
-function onResize(){
-  const chatW = window.innerWidth>768
-      ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--chat-width'))
-      : 0;
+/* 5. Komponenten initialisieren */
+components.init();
 
-  const w = window.innerWidth - chatW;
-  const h = window.innerHeight - (window.innerWidth<=768
-      ? document.getElementById('chat-container').offsetHeight : 0);
+/* 6. IFC-Modell laden */
+await loadIfcModel(components, '../small.ifc');
 
-  renderer.setSize(w,h);
-  camera.aspect = w/h;
-  camera.updateProjectionMatrix();
-}
-window.addEventListener('resize', onResize);
-onResize();
+/* 7. Ray-Picking verbinden */
+initRaycaster(world.scene.three, world.camera.three, canvas);
 
-/* Animation-Loop ---------------------------------------------------------- */
-// function animate(){
-//   requestAnimationFrame(animate);
-//   cube.rotation.x += 0.005;
-//   cube.rotation.y += 0.005;
-//   renderer.render(scene,camera);
-// }
-// animate();
-
-initRaycaster(scene, camera, canvas);
-
-/* IFC-Modell laden --------------------------------*/
-await loadIfcModel(scene, camera);   // <–– Modell ist jetzt da
-
-/* Zeichnen ----------------------------------------*/
-renderer.setAnimationLoop(()=>renderer.render(scene, camera));
+/* 8. Render-Loop */
+world.renderer.setAnimationLoop(() => world.renderer.render());
