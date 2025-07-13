@@ -57,8 +57,6 @@ onResize();
 // animate();
 
 initRaycaster(scene, camera, canvas);
-window.addEventListener('resize', onResize);
-onResize();
 
 /* IFC-Modell laden --------------------------------*/
 await loadIfcModel(scene, camera);   // <–– Modell ist jetzt da
