@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import * as OBC  from "@thatopen/components"; //Open Boundary Conditions
 
-const container = document.getElementById("container");
+const container = document.getElementById("viewer");
 
 // ─────────── Welt einrichten ───────────
 const components = new OBC.Components(); //Component-Manager
@@ -13,7 +13,7 @@ world.scene    = new OBC.SimpleScene(components); //Erstellt ein neues Scene-Obj
 
 world.scene.setup(); //Alles vorbereiten für erste Darstellung.
 world.scene.three.background = null;
-world.renderer = new OBC.SimpleRenderer(components, container); //Erstellt einen simplen THREE.WebGLRenderer
+world.renderer = new OBC.SimpleRenderer(components, viewer); //Erstellt einen simplen THREE.WebGLRenderer
 
 world.camera   = new OBC.OrthoPerspectiveCamera(components); //automatischer Wechsel zwischen Orthographic und Perspective.
 await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25); //setLookAt(fromX, fromY, fromZ, toX, toY, toZ)

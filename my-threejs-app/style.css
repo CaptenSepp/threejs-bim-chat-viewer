@@ -22,32 +22,7 @@
 
 /* ---------- Grundlayout ---------- */
 html,body{
-  margin:0;padding:0;height:100%;overflow:hidden;
-  font-family:var(--font);background:var(--bg);color:var(--text);
-}
-#app-container{display:flex;height:100vh;width:100vw}
-
-/* ---------- Chat-Sidebar ---------- */
-#chat-container{
-  display:flex;flex-direction:column;width:var(--chat-width);
-  background:var(--chat-bg);box-shadow:0 0 8px rgba(0,0,0,.45);z-index:10;
-}
-#chat-header{padding:14px;background:var(--chat-header-bg);font-weight:600;
-  letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,.05)}
-#chat-messages{flex:1;padding:12px 14px;overflow-y:auto;background:var(--chat-bg)}
-#chat-messages::-webkit-scrollbar{width:8px}
-#chat-messages::-webkit-scrollbar-thumb{background:var(--scroll-thumb);border-radius:4px}
-#chat-messages{scrollbar-width:thin;scrollbar-color:var(--scroll-thumb) transparent}
-
-/* Nachrichten-Bubbles */
-.message-wrapper{display:flex;flex-direction:column;margin-bottom:12px;align-items:flex-start}
-.message{background:var(--bubble-bg);padding:8px 11px;border-radius:var(--radius);
-  font-size:.9rem;line-height:1.4;word-break:break-word;max-width:85%}
-.message-wrapper.self{align-items:flex-end}
-.message-wrapper.self .message{background:var(--primary);color:#fff}
-.meta{margin-top:2px;font-size:.7rem;color:#9d9d9d}
-.message-wrapper.self .meta{text-align:right}
-.message-reference{display:block;font-size:.75rem;color:#ccc;background:#444;
+ 
   padding:4px 8px;border-radius:var(--radius);margin-bottom:5px;
   border-left:3px solid var(--primary)}
 
@@ -73,12 +48,12 @@ html,body{
 #send-btn:disabled{opacity:.5;cursor:not-allowed}
 
 /* ---------- Three-Canvas ---------- */
-#three-canvas{flex:1;display:block;background:var(--bg);cursor:pointer}
+#container{flex:1;display:block;background:var(--bg);cursor:pointer}
 
 /* ---------- Responsive ---------- */
 @media(max-width:768px){
   #app-container{flex-direction:column}
   #chat-container{width:100vw;height:50vh;box-shadow:none}
-  #three-canvas{width:100vw;height:50vh}
+  #container{width:100vw;height:50vh}
   #send-btn{height:auto;min-height:var(--input-min-height)}
 }
