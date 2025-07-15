@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import * as OBC  from "@thatopen/components"; //Open Boundary Conditions
 
-const container = document.getElementById("viewer");
+const viewer = document.getElementById("viewer");
 
 // ─────────── Welt einrichten ───────────
 const components = new OBC.Components(); //Component-Manager

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import * as OBC  from '@thatopen/components';
-import { initRaycaster } from './raycaster.js';
 
 const canvas = document.getElementById('three-canvas');
 
@@ -45,9 +44,6 @@ const loadFrag = async (path = '/frags/school_str.frag') => {
   await fragments.core.load(buffer, { modelId: 'school_str' });
 };
 await loadFrag();
-
-// ─────────── Raycaster für Chat ───────────
-initRaycaster(world.scene.three, world.camera.three, canvas);
 
 // ─────────── Render-Loop ───────────
 world.renderer.setAnimationLoop(() => world.renderer.render());
