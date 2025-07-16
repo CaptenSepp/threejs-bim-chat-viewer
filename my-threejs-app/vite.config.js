@@ -1,1 +1,1 @@
-export default { assetsInclude: ['**/*.ifc', '**/*.wasm'] };
+export default { assetsInclude: ['**/*.ifc', '**/*.wasm', '**/*.frag'] };

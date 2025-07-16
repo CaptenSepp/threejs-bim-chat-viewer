@@ -1,32 +1,28 @@
 /* ---------- Grundlayout ---------- */
-+#app-container{            /* NEU – 2-Spalten-Layout */
-+  display:flex;
-+  height:100vh;           /* volle Fensterhöhe */
-+}
+#app-container {
+  display: flex;
+  height: 100vh; /* volle Fensterhöhe */
+}
 
-html,body{
-- 
--  padding:4px 8px;border-radius:var(--radius);margin-bottom:5px;
--  border-left:3px solid var(--primary)}
-+  margin:0;               /* Browser-Defaults neutralisieren */
-+  font-family:var(--font);
-+  background:var(--bg);
-+  color:var(--text);
-+}
+html, body {
+  margin: 0; /* Browser-Defaults neutralisieren */
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+}
 
--#container{flex:1;display:block;background:var(--bg);cursor:pointer}
-+#viewer{                   /* id-Name wie in HTML */
-+  flex:1;
-+  background:var(--bg);
-+  cursor:pointer;
-+  min-width:0;            /* verhindert Überbreite */
-+}
+#viewer { /* id-Name wie in HTML */
+  flex: 1;
+  background: var(--bg);
+  cursor: pointer;
+  min-width: 0; /* verhindert Überbreite */
+}
 
 /* Chat-Spalte etwas aufgehübscht */
-+#chat-container{
-+  width:var(--chat-width);
-+  display:flex;
-+  flex-direction:column;
-+  background:var(--chat-bg);
-+  border-right:1px solid #000;
-+}
+#chat-container {
+  width: var(--chat-width);
+  display: flex;
+  flex-direction: column;
+  background: var(--chat-bg);
+  border-right: 1px solid #000;
+}
