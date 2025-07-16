@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import * as OBC  from "@thatopen/components"; //Open Boundary Conditions
+import { loadFragments } from './loadFrag.js';
 
 const viewer = document.getElementById('viewer');
 
@@ -58,19 +59,10 @@ fragments.list.onItemSet.add(({ value: model }) => {
 });
 
 // ─────────── Fragments-Datei laden ───────────
-const loadFrag = async (path = '/frags/school_str.frag') => {
-  console.log('Lade Fragmente von', path);
-  try {
-    const file = await fetch(path);
-    if (!file.ok) throw new Error(`HTTP ${file.status}`);
-    const buffer = await file.arrayBuffer(); //Binärdaten umwandeln
-    await fragments.core.load(buffer, { modelId: 'school_str' });
-    console.log('Fragmente geladen');
-  } catch (err) {
-    console.error('Fehler beim Laden der Fragmente:', err);
-  }
-};
+const loadFrag = (path = '/frags/school_str.frag') => loadFragments(fragments, path);
 loadFrag();
 
 // ─────────── Render-Loop ───────────
 world.renderer.setAnimationLoop(() => world.renderer.render());
+
+export { components, world, fragments, loadFrag };
