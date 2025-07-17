@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import * as OBC  from "@thatopen/components"; //Open Boundary Conditions
 import { loadFragments } from './loadFrag.js';
+import workerURL from "@thatopen/fragments/dist/Worker/worker.mjs?url";
 
 const viewer = document.getElementById('viewer');
 
@@ -31,22 +32,9 @@ components.init(); //Startet intern alle Komponenten
 components.get(OBC.Grids).create(world); //Fügt ein Bodenraster hinzu 
 
 // ─────────── Fragments-Manager ───────────
-const githubUrl  = 'https://thatopen.github.io/engine_fragment/resources/worker.mjs';
-let workerUrl = null;
-try {
-  console.log('Lade Fragment-Worker...');
-  const fetchedUrl = await fetch(githubUrl);
-  if (!fetchedUrl.ok) throw new Error(`HTTP ${fetchedUrl.status}`);
-  const workerBlob = await fetchedUrl.blob();
-  const workerFile = new File([workerBlob], 'worker.mjs', { type: 'text/javascript' });
-  workerUrl = URL.createObjectURL(workerFile);
-  console.log('Worker geladen');
-} catch (err) {
-  console.error('Fehler beim Laden des Fragment-Workers:', err);
-}
-
+// Use local worker from the fragments package to avoid network errors
 const fragments = components.get(OBC.FragmentsManager); //FragmentsManager: Teilt das IFC-Modell in kleine Teile ("Fragments") auf, damit du z. B. Dinge ausblenden, hervorheben, selektieren kannst.
-fragments.init(workerUrl);
+fragments.init(workerURL);
 
 world.camera.controls.addEventListener("rest", () => fragments.core.update(true)); //aktualisiert nach Maussteuerung
 
