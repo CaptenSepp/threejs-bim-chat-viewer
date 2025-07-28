@@ -1,3 +1,5 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#202020}
-#container{width:100vw;height:100vh}
+#wrapper{display:flex;width:100vw;height:100vh}
+#sidebar{width:33.33%;height:100vh}
+#container{width:66.67%;height:66.67vh}
 
