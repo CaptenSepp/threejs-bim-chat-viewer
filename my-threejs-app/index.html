@@ -1,40 +1,13 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Chat & Three.js Demo</title>
-
-  <link rel="stylesheet" href="./style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <title>IFC Viewer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <div id="app-container">
-    <!-- Chat -->
-    <div id="chat-container" role="region" aria-label="Chatverlauf">
-      <div id="chat-header">Chatverlauf</div>
-      <div id="chat-messages" aria-live="polite"></div>
-
-      <div id="chat-input">
-        <div id="chat-reference-container" class="hidden">
-          <span id="chat-reference-text"></span>
-          <button id="clear-reference-btn" aria-label="Referenz entfernen">×</button>
-        </div>
-
-        <div id="input-elements">
-          <textarea id="input-field" placeholder="Hier schreiben…" rows="1"
-                    role="textbox" aria-multiline="true"></textarea>
-          <button id="send-btn" aria-label="Nachricht senden">Senden</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Canvas -->
-    <canvas id="three-canvas"></canvas>
-  </div>
-
-  <!-- Haupt-Module -->
-  <script type="module" src="./src/chat.js"></script>
-  <script type="module" src="./src/main.js"></script>
+  <div id="container"></div>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>

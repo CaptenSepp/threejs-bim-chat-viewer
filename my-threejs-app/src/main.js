@@ -1,40 +1,52 @@
-/* ------------------------------------------------- *
- *  Haupt-Bootstrap: erstellt World + lädt IFC
- * ------------------------------------------------- */
-import * as THREE from 'three';
-import * as OBC   from '@thatopen/components';
-import { loadIfcModel } from './ifcLoader.js';
-import { initRaycaster } from './raycaster.js';
+import * as THREE from "three";
+import * as OBC  from "@thatopen/components"; //Open Boundary Conditions
 
-const canvas = document.getElementById('three-canvas');
+const container = document.getElementById("container");
 
-/* 1. Komponenten-Container */
-const components = new OBC.Components();
+// ─────────── Welt einrichten ───────────
+const components = new OBC.Components(); //Component-Manager
 
-/* 2. Neue World (Scene / Camera / Renderer) */
-const worlds = components.get(OBC.Worlds);
-const world  = worlds.create();         // SimpleScene, SimpleCamera, SimpleRenderer
+const worlds = components.get(OBC.Worlds); //Worlds-Komponente – sie kann mehrere 3D-Welten erzeugen
+const world  = worlds.create();
+world.scene    = new OBC.SimpleScene(components); //Erstellt ein neues Scene-Objekt (3D-Welt) - Licht, Hintergrundfarbe, THREE.Scene-Objekt
+//three = new THREE.Scene() und three.background = new THREE.Color(...)
 
-world.scene    = new OBC.SimpleScene(components);
-world.camera   = new OBC.SimpleCamera(components);
-world.renderer = new OBC.SimpleRenderer(components, canvas);
+world.scene.setup(); //Alles vorbereiten für erste Darstellung.
+world.scene.three.background = null;
+world.renderer = new OBC.SimpleRenderer(components, container); //Erstellt einen simplen THREE.WebGLRenderer
 
-/* 3. Licht */
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-dirLight.position.set(5, 5, 5);
-world.scene.three.add(dirLight, new THREE.AmbientLight(0x404040, 2));
+world.camera   = new OBC.OrthoPerspectiveCamera(components); //automatischer Wechsel zwischen Orthographic und Perspective.
+await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25); //setLookAt(fromX, fromY, fromZ, toX, toY, toZ)
 
-/* 4. Grid (optional aus Doku) */
-components.get(OBC.Grids).create(world);
+components.init(); //Startet intern alle Komponenten
+components.get(OBC.Grids).create(world); //Fügt ein Bodenraster hinzu 
 
-/* 5. Komponenten initialisieren */
-components.init();
+// ─────────── Fragments-Manager ───────────
+const githubUrl  = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
+const fetchedUrl = await fetch(githubUrl);
+const workerBlob = await fetchedUrl.blob();
+const workerFile = new File([workerBlob], "worker.mjs", { type: "text/javascript" });
+const workerUrl  = URL.createObjectURL(workerFile);
 
-/* 6. IFC-Modell laden */
-await loadIfcModel(components, '../small.ifc');
+const fragments = components.get(OBC.FragmentsManager); //FragmentsManager: Teilt das IFC-Modell in kleine Teile ("Fragments") auf, damit du z. B. Dinge ausblenden, hervorheben, selektieren kannst.
+fragments.init(workerUrl);
 
-/* 7. Ray-Picking verbinden */
-initRaycaster(world.scene.three, world.camera.three, canvas);
+world.camera.controls.addEventListener("rest", () => fragments.core.update(true)); //aktualisiert nach Maussteuerung
 
-/* 8. Render-Loop */
+fragments.list.onItemSet.add(({ value: model }) => {
+  model.useCamera(world.camera.three);
+  world.scene.three.add(model.object); //add() fügt eine Listener-Funktion hinzu - Fügt das 3D-Modell zur THREE.Scene hinzu /sichtbar machen.
+
+  fragments.core.update(true);
+});
+
+// ─────────── Fragments-Datei laden ───────────
+const loadFrag = async (path = "/frags/school_str.frag") => {
+  const file   = await fetch(path);
+  const buffer = await file.arrayBuffer(); //Binärdaten umwandeln
+  await fragments.core.load(buffer, { modelId: "school_str" }); 
+};
+loadFrag();
+
+// ─────────── Render-Loop ───────────
 world.renderer.setAnimationLoop(() => world.renderer.render());
