@@ -1,5 +1,22 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#202020}
 #wrapper{display:flex;width:100vw;height:100vh}
-#sidebar{width:33.33%;height:100vh}
-#container{width:66.67%;height:66.67vh}
+#sidebar{
+  width:20%;
+  height:100vh;
+  box-sizing:border-box;
+  padding:1rem;
+  overflow:hidden;
+  background:#f0f0f0;
+  display:flex;
+  flex-direction:column;
+}
+#chat-log{
+  flex:1;
+  overflow-y:auto;
+  margin-bottom:0.5rem;
+  padding-right:0.25rem;
+}
+#chat-form{display:flex;gap:0.5rem;}
+#chat-input{flex:1;}
+#container{width:80%;height:80vh}
 

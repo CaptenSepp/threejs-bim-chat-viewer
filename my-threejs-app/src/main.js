@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import * as OBC  from "@thatopen/components"; //Open Boundary Conditions
+import "./chat.js";
 
 const container = document.getElementById("container");
 
