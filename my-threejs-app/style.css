@@ -1,22 +1,84 @@
-html,body{margin:0;height:100%;overflow:hidden;background:#202020}
-#wrapper{display:flex;width:100vw;height:100vh}
-#sidebar{
-  width:20%;
-  height:100vh;
-  box-sizing:border-box;
-  padding:1rem;
-  overflow:hidden;
-  background:#f0f0f0;
-  display:flex;
-  flex-direction:column;
-}
-#chat-log{
-  flex:1;
-  overflow-y:auto;
-  margin-bottom:0.5rem;
-  padding-right:0.25rem;
-}
-#chat-form{display:flex;gap:0.5rem;}
-#chat-input{flex:1;}
-#container{width:80%;height:80vh}
+/* ---------- Global Box-Sizing ---------- */
+*,*::before,*::after{box-sizing:border-box}
 
+/* ---------- Design-Variablen ---------- */
+:root{
+  --chat-width:320px;
+  --bg:#141414;
+  --chat-bg:#1e1e1e;
+  --chat-header-bg:#262626;
+  --chat-input-bg:#262626;
+  --text:#e6e6e6;
+  --primary:rgb(255,132,0);
+  --bubble-bg:#2c2c2c;
+  --scroll-thumb:#444;
+  --radius:6px;
+  --font:'Inter',sans-serif;
+  --input-min-height:40px;
+  --input-max-height:120px;
+  --reference-tag-bg:#3a3a3a;
+  --reference-tag-text:#a0a0a0;
+}
+
+/* ---------- Grundlayout ---------- */
+html,body{
+  margin:0;padding:0;height:100%;overflow:hidden;
+  font-family:var(--font);background:var(--bg);color:var(--text);
+}
+#app-container{display:flex;height:100vh;width:100vw}
+
+/* ---------- Chat-Sidebar ---------- */
+#chat-container{
+  display:flex;flex-direction:column;width:var(--chat-width);
+  background:var(--chat-bg);box-shadow:0 0 8px rgba(0,0,0,.45);z-index:10;
+}
+#chat-header{padding:14px;background:var(--chat-header-bg);font-weight:600;
+  letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,.05)}
+#chat-messages{flex:1;padding:12px 14px;overflow-y:auto;background:var(--chat-bg)}
+#chat-messages::-webkit-scrollbar{width:8px}
+#chat-messages::-webkit-scrollbar-thumb{background:var(--scroll-thumb);border-radius:4px}
+#chat-messages{scrollbar-width:thin;scrollbar-color:var(--scroll-thumb) transparent}
+
+/* Nachrichten-Bubbles */
+.message-wrapper{display:flex;flex-direction:column;margin-bottom:12px;align-items:flex-start}
+.message{background:var(--bubble-bg);padding:8px 11px;border-radius:var(--radius);
+  font-size:.9rem;line-height:1.4;word-break:break-word;max-width:85%}
+.message-wrapper.self{align-items:flex-end}
+.message-wrapper.self .message{background:var(--primary);color:#fff}
+.meta{margin-top:2px;font-size:.7rem;color:#9d9d9d}
+.message-wrapper.self .meta{text-align:right}
+.message-reference{display:block;font-size:.75rem;color:#ccc;background:#444;
+  padding:4px 8px;border-radius:var(--radius);margin-bottom:5px;
+  border-left:3px solid var(--primary)}
+
+/* ---- chat input area ---- */
+#chat-input{display:flex;flex-direction:column;gap:8px;padding:12px;
+  background:var(--chat-input-bg);border-top:1px solid rgba(255,255,255,.05)}
+#input-elements{display:flex;gap:8px;align-items:flex-end}
+
+#chat-reference-container{display:flex;align-items:center;justify-content:space-between;
+  background:var(--reference-tag-bg);padding:6px 10px;border-radius:var(--radius);
+  font-size:.8rem;color:var(--reference-tag-text);border-left:3px solid var(--primary)}
+#chat-reference-container.hidden{display:none}
+#chat-reference-text{flex-grow:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#clear-reference-btn{background:none;border:none;color:var(--reference-tag-text);
+  font-size:1rem;cursor:pointer;padding:0 4px}
+#clear-reference-btn:hover{color:#fff}
+
+#input-field{flex:1;font-size:.9rem;padding:8px 10px;border:none;border-radius:var(--radius);
+  background:#fff;color:#000;outline:none;resize:none;overflow-y:auto;
+  min-height:var(--input-min-height);max-height:var(--input-max-height);line-height:1.4}
+#send-btn{padding:8px 16px;border:none;background:var(--primary);color:#fff;
+  border-radius:var(--radius);font-weight:600;cursor:pointer;flex-shrink:0}
+#send-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ---------- Three-Canvas ---------- */
+#three-canvas{flex:1;display:block;background:var(--bg);cursor:pointer}
+
+/* ---------- Responsive ---------- */
+@media(max-width:768px){
+  #app-container{flex-direction:column}
+  #chat-container{width:100vw;height:50vh;box-shadow:none}
+  #three-canvas{width:100vw;height:50vh}
+  #send-btn{height:auto;min-height:var(--input-min-height)}
+}
