@@ -2,7 +2,7 @@ import * as THREE from "three";
 import * as OBC  from "@thatopen/components"; //Open Boundary Conditions
 import "./chat.js";
 
-const container = document.getElementById("container");
+const container = document.getElementById("three-canvas");
 
 // ─────────── Welt einrichten ───────────
 const components = new OBC.Components(); //Component-Manager
