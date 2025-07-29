@@ -7,15 +7,22 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <div id="wrapper">
-     <div id="sidebar">
-      <div id="chat-log"></div>
-      <form id="chat-form">
-        <input id="chat-input" autocomplete="off" />
-        <button type="submit">Send</button>
-      </form>
+  <div id="app-container">
+    <div id="chat-container">
+      <div id="chat-header">Chat</div>
+      <div id="chat-messages"></div>
+      <div id="chat-input">
+        <div id="chat-reference-container" class="hidden">
+          <span id="chat-reference-text"></span>
+          <button id="clear-reference-btn" aria-label="clear">&times;</button>
+        </div>
+        <form id="input-elements">
+          <textarea id="input-field" autocomplete="off"></textarea>
+          <button id="send-btn" type="submit">Send</button>
+        </form>
+      </div>
     </div>
-    <div id="container"></div>
+    <div id="three-canvas"></div>
   </div>
   <script type="module" src="/src/main.js"></script>
 </body>
