@@ -14,7 +14,7 @@ input.addEventListener('keydown', e => {
 });
 
 /* 1. Vorhandene Nachrichten aus localStorage laden */
-const STORAGE_KEY = 'ifc-chat';
+const STORAGE_KEY = 'chat-history';
 const messages = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 messages.forEach(addMsgToDOM);
 
@@ -38,6 +38,8 @@ form.addEventListener('submit', e => {
 function addMsgToDOM({ text, time }){
   const wrapper = document.createElement('div');
   wrapper.classList.add('message-wrapper','self');
+
+  
 
   const message = document.createElement('div');
   message.classList.add('message');
