@@ -2,9 +2,16 @@
  *  Sehr einfaches Chat-Frontend
  *  – keine Server-Calls, rein lokal
  * ------------------------------------------ */
-const log   = document.getElementById('chat-log');
-const form  = document.getElementById('chat-form');
-const input = document.getElementById('chat-input');
+const log   = document.getElementById('chat-messages');
+const form  = document.getElementById('input-elements');
+const input = document.getElementById('input-field');
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    form.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
+  }
+});
 
 /* 1. Vorhandene Nachrichten aus localStorage laden */
 const STORAGE_KEY = 'ifc-chat';
@@ -29,12 +36,21 @@ form.addEventListener('submit', e => {
 
 /* 3. Helfer: Nachricht in DOM einsetzen */
 function addMsgToDOM({ text, time }){
-  const div     = document.createElement('div');
-  const date    = new Date(time).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-  div.innerHTML = `<span style="opacity:.6;font-size:.75rem">${date}</span><br>${escapeHTML(text)}`;
-  div.style.marginBottom = '1rem';
-  log.appendChild(div);
-  log.scrollTop = log.scrollHeight;         // automatisch nach unten scrollen
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('message-wrapper','self');
+
+  const message = document.createElement('div');
+  message.classList.add('message');
+  message.innerHTML = escapeHTML(text);
+
+  const meta = document.createElement('div');
+  meta.classList.add('meta');
+  meta.textContent = new Date(time).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+
+  wrapper.appendChild(message);
+  wrapper.appendChild(meta);
+  log.appendChild(wrapper);
+  log.scrollTop = log.scrollHeight; // automatisch nach unten scrollen
 }
 
 /* 4. Kleiner XSS-Schutz */
