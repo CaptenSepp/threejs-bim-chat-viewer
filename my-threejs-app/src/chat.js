@@ -6,6 +6,27 @@ const log   = document.getElementById('chat-messages');
 const form  = document.getElementById('input-elements');
 const input = document.getElementById('input-field');
 
+// elements for optional message references
+const referenceContainer = document.getElementById('chat-reference-container');
+const referenceText = document.getElementById('chat-reference-text');
+const clearReferenceBtn = document.getElementById('clear-reference-btn');
+
+let currentReference = null;
+
+export function setReference(ref){
+  currentReference = ref;
+  referenceText.textContent = ref.label;
+  referenceContainer.classList.remove('hidden');
+}
+
+export function clearReference(){
+  currentReference = null;
+  referenceText.textContent = '';
+  referenceContainer.classList.add('hidden');
+}
+
+clearReferenceBtn.addEventListener('click', clearReference);
+
 input.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -25,21 +46,26 @@ form.addEventListener('submit', e => {
   if (!text) return;
 
   /* Speichern & anzeigen */
-  const msg = { text, time: Date.now() };
+  const msg = { text, time: Date.now(), reference: currentReference };
   messages.push(msg);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
   addMsgToDOM(msg);
 
   input.value = '';
   input.focus();
+  clearReference();
 });
 
 /* 3. Helfer: Nachricht in DOM einsetzen */
-function addMsgToDOM({ text, time }){
+function addMsgToDOM({ text, time, reference }){
   const wrapper = document.createElement('div');
   wrapper.classList.add('message-wrapper','self');
-
-  
+  if(reference && reference.label){
+    const ref = document.createElement('div');
+    ref.classList.add('message-reference');
+    ref.textContent = reference.label;
+    wrapper.appendChild(ref);
+  }
 
   const message = document.createElement('div');
   message.classList.add('message');
