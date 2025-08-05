@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import * as OBC  from "@thatopen/components"; //Open Boundary Conditions
-import "./chat.js";
+import { setReference } from "./chat.js";
+import { initRaycaster, highlightSelection, clearHighlight } from "./raycaster.js";
 
 const container = document.getElementById("three-canvas");
 
@@ -31,6 +32,17 @@ const workerUrl  = URL.createObjectURL(workerFile);
 
 const fragments = components.get(OBC.FragmentsManager); //FragmentsManager: Teilt das IFC-Modell in kleine Teile ("Fragments") auf, damit du z. B. Dinge ausblenden, hervorheben, selektieren kannst.
 fragments.init(workerUrl);
+
+function handleSelect(selection) {
+  highlightSelection(components, selection);
+  setReference({
+    label: `Item ${selection.itemId}`,
+    modelId: selection.modelId,
+    itemId: selection.itemId,
+  });
+}
+
+initRaycaster(components, world, handleSelect);
 
 world.camera.controls.addEventListener("rest", () => fragments.core.update(true)); //aktualisiert nach Maussteuerung
 
