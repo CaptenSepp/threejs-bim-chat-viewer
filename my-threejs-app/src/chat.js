@@ -1,7 +1,5 @@
-/* ------------------------------------------
- *  Sehr einfaches Chat-Frontend
- *  – keine Server-Calls, rein lokal
- * ------------------------------------------ */
+import { clearHighlight } from './raycaster.js';
+
 const log   = document.getElementById('chat-messages');
 const form  = document.getElementById('input-elements');
 const input = document.getElementById('input-field');
@@ -78,10 +76,9 @@ function addMsgToDOM({ text, time, reference }){
   wrapper.appendChild(message);
   wrapper.appendChild(meta);
   log.appendChild(wrapper);
-  log.scrollTop = log.scrollHeight; // automatisch nach unten scrollen
+  log.scrollTop = log.scrollHeight;
 }
 
-/* 4. Kleiner XSS-Schutz */
 function escapeHTML(str){
   return str.replace(/[&<>"']/g, m => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
