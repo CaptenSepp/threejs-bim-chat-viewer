@@ -29,20 +29,19 @@ export function initRaycaster(components, world, onSelect) {
   //   }
   // });
 
-  // src/raycaster.js
+
   canvas.addEventListener('click', async (event) => {
-    raycaster.mouse.updateMouseInfo(event);        // Position berechnen
-    const hit = await raycaster.castRay();         // <<< einfacher Aufruf
+    raycaster.mouse.updateMouseInfo(event);        
+    const hit = await raycaster.castRay();         
 
     if (hit) {
       onSelect({
-        modelId: hit.fragments.modelId,           // bleibt gleich
-        itemId: hit.instanceId ?? hit.id         // → je nach API-Version
+        modelId: hit.fragments.modelId,
+        itemId: hit.localId
       });
       console.log(hit);
     }
   });
-
 
 }
 
