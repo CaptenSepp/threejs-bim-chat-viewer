@@ -13,20 +13,36 @@ export function initRaycaster(components, world, onSelect) {
   const raycaster = components.get(Raycasters).get(world);
   const canvas = world.renderer.three.domElement;
 
-  canvas.addEventListener("click", async () => {
-    const result = await components.get(FragmentsManager).raycast({
-      camera: world.camera.three,
-      mouse: raycaster.mouse.position,
-      dom: canvas,
-    });
+  // canvas.addEventListener("click", async (event) => {
+  //   raycaster.mouse.updateMouseInfo(event);
+  //   const result = await components.get(FragmentsManager).raycast({
+  //     camera: world.camera.three,
+  //     mouse: raycaster.mouse.position,
+  //     dom: canvas,
+  //   });
 
-    if (result) {
+  //   if (result) {
+  //     onSelect({
+  //       modelId: result.fragments.modelId,
+  //       itemId: result.localId, //itemId to localId
+  //     });
+  //   }
+  // });
+
+  // src/raycaster.js
+  canvas.addEventListener('click', async (event) => {
+    raycaster.mouse.updateMouseInfo(event);        // Position berechnen
+    const hit = await raycaster.castRay();         // <<< einfacher Aufruf
+
+    if (hit) {
       onSelect({
-        modelId: result.fragments.modelId,
-        itemId: result.localId, //itemId to localId
+        modelId: hit.fragments.modelId,           // bleibt gleich
+        itemId: hit.instanceId ?? hit.id         // → je nach API-Version
       });
+      console.log(hit);
     }
   });
+
 
 }
 

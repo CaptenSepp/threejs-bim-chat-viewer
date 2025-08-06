@@ -21,7 +21,11 @@ world.camera   = new OBC.OrthoPerspectiveCamera(components); //automatischer Wec
 await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25); //setLookAt(fromX, fromY, fromZ, toX, toY, toZ)
 
 components.init(); //Startet intern alle Komponenten
-components.get(OBC.Grids).create(world); //Fügt ein Bodenraster hinzu 
+components.get(OBC.Grids).create(world);
+
+// initRaycaster(components, world, (selection) => {
+//   console.log("Selected", selection);
+// });
 
 // ─────────── Fragments-Manager ───────────
 const githubUrl  = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
