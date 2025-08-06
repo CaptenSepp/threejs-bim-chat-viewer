@@ -1,7 +1,7 @@
 import { clearHighlight } from './raycaster.js';
 
-const log   = document.getElementById('chat-messages');
-const form  = document.getElementById('input-elements');
+const log = document.getElementById('chat-messages');
+const form = document.getElementById('input-elements');
 const input = document.getElementById('input-field');
 
 // elements for optional message references
@@ -11,13 +11,13 @@ const clearReferenceBtn = document.getElementById('clear-reference-btn');
 
 let currentReference = null;
 
-export function setReference(ref){
+export function setReference(ref) {
   currentReference = ref;
   referenceText.textContent = ref.label;
   referenceContainer.classList.remove('hidden');
 }
 
-export function clearReference(){
+export function clearReference() {
   currentReference = null;
   referenceText.textContent = '';
   referenceContainer.classList.add('hidden');
@@ -28,7 +28,7 @@ clearReferenceBtn.addEventListener('click', clearReference);
 input.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    form.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   }
 });
 
@@ -55,13 +55,24 @@ form.addEventListener('submit', e => {
 });
 
 /* 3. Helfer: Nachricht in DOM einsetzen */
-function addMsgToDOM({ text, time, reference }){
+function addMsgToDOM({ text, time, reference }) {
   const wrapper = document.createElement('div');
-  wrapper.classList.add('message-wrapper','self');
-  if(reference && reference.label){
+  wrapper.classList.add('message-wrapper', 'self');
+  if (reference && reference.label) {
     const ref = document.createElement('div');
     ref.classList.add('message-reference');
     ref.textContent = reference.label;
+
+    // Züruckreferezieren
+    ref.dataset.modelId = reference.modelId;
+    ref.dataset.itemId = reference.itemId;
+    ref.addEventListener('click', () => {
+      if (ref.dataset.itemId) window.highlightFromChat({
+        modelId: ref.dataset.modelId,
+        itemId: +ref.dataset.itemId
+      });
+    });
+
     wrapper.appendChild(ref);
   }
 
@@ -71,7 +82,7 @@ function addMsgToDOM({ text, time, reference }){
 
   const meta = document.createElement('div');
   meta.classList.add('meta');
-  meta.textContent = new Date(time).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  meta.textContent = new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   wrapper.appendChild(message);
   wrapper.appendChild(meta);
@@ -79,8 +90,8 @@ function addMsgToDOM({ text, time, reference }){
   log.scrollTop = log.scrollHeight;
 }
 
-function escapeHTML(str){
+function escapeHTML(str) {
   return str.replace(/[&<>"']/g, m => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
   }[m]));
 }
