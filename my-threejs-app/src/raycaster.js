@@ -1,28 +1,58 @@
-import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
+import * as THREE from "three";
+import * as FRAGS from "@thatopen/fragments";
+import { FragmentsManager, Raycasters } from "@thatopen/components";
 
-/**
- * Verbindet Ray-Picking mit der Chat-API.
- * @param {THREE.Scene}  scene
- * @param {THREE.Camera} camera
- * @param {HTMLCanvasElement} canvas
- */
-export function initRaycaster(scene, camera, canvas) {
-  const raycaster = new THREE.Raycaster();
-  const mouse     = new THREE.Vector2();
+const HIGHLIGHT_STYLE = {
+  color: new THREE.Color(0xff0000),
+  renderedFaces: FRAGS.RenderedFaces.ONE,
+  opacity: 0.8,
+  transparent: true,
+};
 
-  function onPointerDown(e) {
-    const rect = canvas.getBoundingClientRect();
-    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+export function initRaycaster(components, world, onSelect) {
+  const raycaster = components.get(Raycasters).get(world);
+  const canvas = world.renderer.three.domElement;
 
-    raycaster.setFromCamera(mouse, camera); // 
-    const hits = raycaster.intersectObjects(scene.children, true); // 
+  // canvas.addEventListener("click", async (event) => {
+  //   raycaster.mouse.updateMouseInfo(event);
+  //   const result = await components.get(FragmentsManager).raycast({
+  //     camera: world.camera.three,
+  //     mouse: raycaster.mouse.position,
+  //     dom: canvas,
+  //   });
 
-    if (hits.length) {
-      window.chatAPI?.setObjectReferenceForChat(hits[0].object.name);
-    } else {
-      window.chatAPI?.clearObjectReference();
+  //   if (result) {
+  //     onSelect({
+  //       modelId: result.fragments.modelId,
+  //       itemId: result.localId, //itemId to localId
+  //     });
+  //   }
+  // });
+
+
+  canvas.addEventListener('click', async (event) => {
+    raycaster.mouse.updateMouseInfo(event);        
+    const hit = await raycaster.castRay();         
+
+    if (hit) {
+      onSelect({
+        modelId: hit.fragments.modelId,
+        itemId: hit.localId
+      });
+      console.log(hit);
     }
-  }
-  canvas.addEventListener('pointerdown', onPointerDown, false);
+  });
+
+}
+
+export function highlightSelection(components, selection) {
+  const items = { [selection.modelId]: [selection.itemId] };
+  const frags = components.get(FragmentsManager);
+  frags.resetHighlight();
+  frags.highlight(HIGHLIGHT_STYLE, items);
+  frags.core.update(true);
+}
+
+export function clearHighlight(components) {
+  components.get(FragmentsManager).resetHighlight();
 }
