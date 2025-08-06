@@ -12,6 +12,7 @@
     "web-ifc": "^0.0.69"
   },
   "devDependencies": {
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4"
   }
 }
