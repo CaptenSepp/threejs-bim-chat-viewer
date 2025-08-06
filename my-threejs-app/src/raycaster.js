@@ -50,6 +50,7 @@ export function highlightSelection(components, selection) {
   const frags = components.get(FragmentsManager);
   frags.resetHighlight();
   frags.highlight(HIGHLIGHT_STYLE, items);
+  frags.core.update(true);
 }
 
 export function clearHighlight(components) {
