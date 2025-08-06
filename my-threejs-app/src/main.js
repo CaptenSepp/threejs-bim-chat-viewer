@@ -7,6 +7,7 @@ const container = document.getElementById("three-canvas");
 
 // ─────────── Welt einrichten ───────────
 const components = new OBC.Components(); //Component-Manager
+window.highlightFromChat = sel => highlightSelection(components, sel);
 
 const worlds = components.get(OBC.Worlds); //Worlds-Komponente – sie kann mehrere 3D-Welten erzeugen
 const world  = worlds.create();
