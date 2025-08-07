@@ -1,12 +1,6 @@
-const STORAGE_KEY = 'chat-history';
+import { addMsgToDOM, form, input, referenceContainer, referenceText, clearReferenceBtn } from "./chat-ui.js";
 
-// DOM elements
-const log = document.getElementById('chat-messages');
-const form = document.getElementById('input-elements');
-const input = document.getElementById('input-field');
-const referenceContainer = document.getElementById('chat-reference-container');
-const referenceText = document.getElementById('chat-reference-text');
-const clearReferenceBtn = document.getElementById('clear-reference-btn');
+const STORAGE_KEY = 'chat-history';
 
 // State
 let currentReference = null;
@@ -23,55 +17,6 @@ export function clearReference() {
   currentReference = null;
   referenceText.textContent = '';
   referenceContainer.classList.add('hidden');
-}
-
-// Helpers
-function addMsgToDOM({ text, time, reference }) {
-  const wrapper = document.createElement('div');
-  wrapper.classList.add('message-wrapper', 'self');
-
-  if (reference && reference.label) {
-    const ref = document.createElement('div');
-    ref.classList.add('message-reference');
-    ref.textContent = reference.label;
-    ref.dataset.modelId = reference.modelId;
-    ref.dataset.itemId = reference.itemId;
-    ref.addEventListener('click', () => {
-      if (ref.dataset.itemId) {
-        window.highlightFromChat({
-          modelId: ref.dataset.modelId,
-          itemId: +ref.dataset.itemId,
-        });
-      }
-    });
-    wrapper.appendChild(ref);
-  }
-
-  const message = document.createElement('div');
-  message.classList.add('message');
-  message.innerHTML = escapeHTML(text);
-
-  const meta = document.createElement('div');
-  meta.classList.add('meta');
-  meta.textContent = new Date(time).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  wrapper.appendChild(message);
-  wrapper.appendChild(meta);
-  log.appendChild(wrapper);
-  log.scrollTop = log.scrollHeight;
-}
-
-function escapeHTML(str) {
-  return str.replace(/[&<>"']/g, m => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;',
-  }[m]));
 }
 
 // Event listeners

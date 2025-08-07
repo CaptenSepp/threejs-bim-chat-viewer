@@ -1,24 +1,10 @@
 import * as OBC from "@thatopen/components";
 import { setReference } from "./chat.js";
 import { highlightSelection, initRaycaster } from "./raycaster.js";
+import { getWorkerUrl, loadFragments } from "./utils.js";
 
 const GITHUB_WORKER_URL = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
-const DEFAULT_FRAG_PATH = "/frags/school_str.frag";
 const container = document.getElementById("three-canvas");
-
-// Utils
-async function getWorkerUrl(url) {
-  const fetchedUrl = await fetch(url);
-  const workerBlob = await fetchedUrl.blob();
-  const workerFile = new File([workerBlob], "worker.mjs", { type: "text/javascript" });
-  return URL.createObjectURL(workerFile);
-}
-
-async function loadFragments(fragments, path = DEFAULT_FRAG_PATH) {
-  const file = await fetch(path);
-  const buffer = await file.arrayBuffer();
-  await fragments.core.load(buffer, { modelId: "school_str" });
-}
 
 // Core logic
 const components = new OBC.Components();
@@ -64,4 +50,3 @@ fragments.list.onItemSet.add(({ value: model }) => {
 await loadFragments(fragments);
 
 world.renderer.setAnimationLoop(() => world.renderer.render());
-
