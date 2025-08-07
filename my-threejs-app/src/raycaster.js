@@ -13,36 +13,17 @@ export function initRaycaster(components, world, onSelect) {
   const raycaster = components.get(Raycasters).get(world);
   const canvas = world.renderer.three.domElement;
 
-  // canvas.addEventListener("click", async (event) => {
-  //   raycaster.mouse.updateMouseInfo(event);
-  //   const result = await components.get(FragmentsManager).raycast({
-  //     camera: world.camera.three,
-  //     mouse: raycaster.mouse.position,
-  //     dom: canvas,
-  //   });
-
-  //   if (result) {
-  //     onSelect({
-  //       modelId: result.fragments.modelId,
-  //       itemId: result.localId, //itemId to localId
-  //     });
-  //   }
-  // });
-
-
-  canvas.addEventListener('click', async (event) => {
-    raycaster.mouse.updateMouseInfo(event);        
-    const hit = await raycaster.castRay();         
+  canvas.addEventListener('click', async event => {
+    raycaster.mouse.updateMouseInfo(event);
+    const hit = await raycaster.castRay();
 
     if (hit) {
       onSelect({
         modelId: hit.fragments.modelId,
-        itemId: hit.localId
+        itemId: hit.localId,
       });
-      console.log(hit);
     }
   });
-
 }
 
 export function highlightSelection(components, selection) {
@@ -50,7 +31,7 @@ export function highlightSelection(components, selection) {
   const frags = components.get(FragmentsManager);
   frags.resetHighlight();
   frags.highlight(HIGHLIGHT_STYLE, items);
-  frags.core.update(true);
+  frags.core?.update(true);
 }
 
 export function clearHighlight(components) {
