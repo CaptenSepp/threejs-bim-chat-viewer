@@ -1,6 +1,6 @@
 export async function getWorkerUrl(url) {
-  const fetchedUrl = await fetch(url);
-  const workerBlob = await fetchedUrl.blob();
+  const workerResponse = await fetch(url);
+  const workerBlob = await workerResponse.blob();
   const workerFile = new File([workerBlob], "worker.mjs", { type: "text/javascript" });
   return URL.createObjectURL(workerFile);
 }

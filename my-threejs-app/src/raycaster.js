@@ -15,12 +15,12 @@ export function initRaycaster(components, world, onSelect) {
 
   canvas.addEventListener('click', async event => {
     raycaster.mouse.updateMouseInfo(event);
-    const hit = await raycaster.castRay();
+    const rayHit = await raycaster.castRay();
 
-    if (hit) {
+    if (rayHit) {
       onSelect({
-        modelId: hit.fragments.modelId,
-        itemId: hit.localId,
+        modelId: rayHit.fragments.modelId,
+        itemId: rayHit.localId,
       });
     }
   });
