@@ -2,8 +2,10 @@ import * as THREE from "three";
 import * as FRAGS from "@thatopen/fragments";
 import { FragmentsManager, Raycasters } from "@thatopen/components";
 
+const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+
 const HIGHLIGHT_STYLE = {
-  color: new THREE.Color(0xff0000),
+  color: new THREE.Color(primaryColor),
   renderedFaces: FRAGS.RenderedFaces.ONE,
   opacity: 0.8,
   transparent: true,

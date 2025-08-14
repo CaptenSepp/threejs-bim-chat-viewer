@@ -13,7 +13,8 @@
   --chat-header-bg: #262626;
   --chat-input-bg: #262626;
   --text: #e6e6e6;
-  --primary: rgb(255, 132, 0);
+  /* --primary: rgb(255, 132, 0); */
+  --primary: #FF8200;
   --bubble-bg: #2c2c2c;
   --scroll-thumb: #444;
   --radius: 6px;
@@ -138,15 +139,6 @@ body {
   gap: 8px;
   align-items: flex-end;
 }
-
-/* #chat-reference-container{display:flex;align-items:center;justify-content:space-between;
-  background:var(--reference-tag-bg);padding:6px 10px;border-radius:var(--radius);
-  font-size:.8rem;color:var(--reference-tag-text);border-left:3px solid var(--primary)}
-#chat-reference-container.hidden{display:none}
-#chat-reference-text{flex-grow:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#clear-reference-btn{background:none;border:none;color:var(--reference-tag-text);
-  font-size:1rem;cursor:pointer;padding:0 4px}
-#clear-reference-btn:hover{color:#fff} */
 
 #input-field {
   flex: 1;

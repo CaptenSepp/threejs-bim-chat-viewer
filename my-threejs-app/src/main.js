@@ -22,6 +22,7 @@ await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25);
 engineComponents.init();
 engineComponents.get(TOC.Grids).create(world);
 
+// Model laden
 const fragmentManager = engineComponents.get(TOC.FragmentsManager);
 const workerObjectUrl = await getWorkerUrl(fragmentWorkerUrl);
 fragmentManager.init(workerObjectUrl);
@@ -38,7 +39,7 @@ function handleSelect(selection) {
 
 initRaycaster(engineComponents, world, handleSelect);
 
-world.camera.controls.addEventListener("rest", () => fragmentManager.core.update(true));
+world.camera.controls.addEventListener("change", () => fragmentManager.core.update(true));
 
 fragmentManager.list.onItemSet.add(({ value: model }) => {
   model.useCamera(world.camera.three);
@@ -48,5 +49,18 @@ fragmentManager.list.onItemSet.add(({ value: model }) => {
 
 // Initialization
 await loadFragments(fragmentManager);
+let isRendering = true;
+
+function animate() {
+  if (isRendering) {
+    world.renderer.render();
+  }
+}
+
+world.renderer.setAnimationLoop(animate);
+
+document.addEventListener("visibilitychange", () => {
+  isRendering = !document.hidden;
+});
 
 world.renderer.setAnimationLoop(() => world.renderer.render());
