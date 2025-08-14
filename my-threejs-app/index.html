@@ -1,9 +1,12 @@
+<!-- "Standards Mode" (keine Quirks) damit CSS fähig -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Emojis/Mehrsprachigkeit -->
   <meta charset="utf-8" />
-  <title>IFC Viewer</title>
+  <title>IFC Viewer - Chat</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <!-- CSS wird vor dem JS geladen, sodass die Seite beim Start direkt gestylt ist -->
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -14,8 +17,9 @@
       <div id="chat-input">
         <div id="chat-reference-container" class="hidden">
           <span id="chat-reference-text"></span>
-          <button id="clear-reference-btn" aria-label="clear">&times;</button>
+          <button id="clear-reference-btn" aria-label="clear">X</button> <!-- &times auch bedeutet MultipliKation in HTML -->
         </div>
+        <!-- in Form Enter (ohne Shift) -->
         <form id="input-elements">
           <textarea id="input-field" autocomplete="off"></textarea>
           <button id="send-btn" type="submit">Send</button>
@@ -24,6 +28,7 @@
     </div>
     <div id="three-canvas"></div>
   </div>
+  <!-- type="module" aktiviert den ES-Modul-Loader des Browsers (import/export, Deferred-Laden) -->
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
-import * as TOC from "@thatopen/components";
-import { setReference } from "./chat.js";
+import * as TOC from "@thatopen/components"; // Klassen wie Components, Worlds, SimpleScene etc.
+import { setReference } from "./chat.js"; // Kopplung 3D-Selektion ↔ Chat
 import { highlightSelection, initRaycaster } from "./raycaster.js";
 import { getWorkerUrl, loadFragments } from "./utils.js";
 
@@ -7,8 +7,8 @@ const fragmentWorkerUrl = "https://thatopen.github.io/engine_fragment/resources/
 const viewerContainer = document.getElementById("three-canvas");
 
 // Core logic
-const engineComponents = new TOC.Components();
-window.highlightFromChat = sel => highlightSelection(engineComponents, sel);
+const engineComponents = new TOC.Components(); // Zentrales Service-Registry-Objekt der Engine
+window.highlightFromChat = sel => highlightSelection(engineComponents, sel); // Re-highlights im 3D
 
 const worlds = engineComponents.get(TOC.Worlds);
 const world = worlds.create();
@@ -43,8 +43,8 @@ world.camera.controls.addEventListener("change", () => fragmentManager.core.upda
 
 fragmentManager.list.onItemSet.add(({ value: model }) => {
   model.useCamera(world.camera.three);
-  world.scene.three.add(model.object);
-  fragmentManager.core.update(true);
+  world.scene.three.add(model.object); // Fügt das geladene 3D-Objekt in die Three.js-Szene ein
+  fragmentManager.core.update(true); // Re-Render
 });
 
 // Initialization

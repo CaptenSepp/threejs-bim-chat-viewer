@@ -13,10 +13,10 @@ export async function loadFragments(fragments, path = "/frags/school_str.frag") 
 
 export function escapeHTML(str) {
   return str.replace(/[&<>"']/g, m => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;',
+    '&': '&amp;',   // Ampersand  maskieren
+    '<': '&lt;',    // Tag-Start
+    '>': '&gt;',    // Tag-Ende
+    '"': '&quot;',  // Attributwerte in Anführungszeichen
+    "'": '&#039;',  // Anführungszeichen escapen
   }[m]));
 }
