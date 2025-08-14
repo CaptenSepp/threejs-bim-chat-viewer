@@ -2,8 +2,10 @@ import * as THREE from "three";
 import * as FRAGS from "@thatopen/fragments";
 import { FragmentsManager, Raycasters } from "@thatopen/components";
 
+const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+
 const HIGHLIGHT_STYLE = {
-  color: new THREE.Color(0xff0000),
+  color: new THREE.Color(primaryColor),
   renderedFaces: FRAGS.RenderedFaces.ONE,
   opacity: 0.8,
   transparent: true,
@@ -13,36 +15,17 @@ export function initRaycaster(components, world, onSelect) {
   const raycaster = components.get(Raycasters).get(world);
   const canvas = world.renderer.three.domElement;
 
-  // canvas.addEventListener("click", async (event) => {
-  //   raycaster.mouse.updateMouseInfo(event);
-  //   const result = await components.get(FragmentsManager).raycast({
-  //     camera: world.camera.three,
-  //     mouse: raycaster.mouse.position,
-  //     dom: canvas,
-  //   });
+  canvas.addEventListener('click', async event => {
+    raycaster.mouse.updateMouseInfo(event);
+    const rayHit = await raycaster.castRay();
 
-  //   if (result) {
-  //     onSelect({
-  //       modelId: result.fragments.modelId,
-  //       itemId: result.localId, //itemId to localId
-  //     });
-  //   }
-  // });
-
-
-  canvas.addEventListener('click', async (event) => {
-    raycaster.mouse.updateMouseInfo(event);        
-    const hit = await raycaster.castRay();         
-
-    if (hit) {
+    if (rayHit) {
       onSelect({
-        modelId: hit.fragments.modelId,
-        itemId: hit.localId
+        modelId: rayHit.fragments.modelId,
+        itemId: rayHit.localId,
       });
-      console.log(hit);
     }
   });
-
 }
 
 export function highlightSelection(components, selection) {
@@ -50,7 +33,7 @@ export function highlightSelection(components, selection) {
   const frags = components.get(FragmentsManager);
   frags.resetHighlight();
   frags.highlight(HIGHLIGHT_STYLE, items);
-  frags.core.update(true);
+  frags.core?.update(true);
 }
 
 export function clearHighlight(components) {

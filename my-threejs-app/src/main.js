@@ -1,40 +1,35 @@
-import * as OBC from "@thatopen/components"; //Open Boundary Conditions
+import * as TOC from "@thatopen/components";
 import { setReference } from "./chat.js";
 import { highlightSelection, initRaycaster } from "./raycaster.js";
+import { getWorkerUrl, loadFragments } from "./utils.js";
 
-const container = document.getElementById("three-canvas");
+const fragmentWorkerUrl = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
+const viewerContainer = document.getElementById("three-canvas");
 
-// ─────────── Welt einrichten ───────────
-const components = new OBC.Components(); //Component-Manager
-window.highlightFromChat = sel => highlightSelection(components, sel);
+// Core logic
+const engineComponents = new TOC.Components();
+window.highlightFromChat = sel => highlightSelection(engineComponents, sel);
 
-const worlds = components.get(OBC.Worlds); //Worlds-Komponente – sie kann mehrere 3D-Welten erzeugen
+const worlds = engineComponents.get(TOC.Worlds);
 const world = worlds.create();
-world.scene = new OBC.SimpleScene(components); //Erstellt ein neues Scene-Objekt (3D-Welt) - Licht, Hintergrundfarbe, THREE.Scene-Objekt
-//three = new THREE.Scene() und three.background = new THREE.Color(...)
-
-world.scene.setup(); //Alles vorbereiten für erste Darstellung.
+world.scene = new TOC.SimpleScene(engineComponents);
+world.scene.setup();
 world.scene.three.background = null;
-world.renderer = new OBC.SimpleRenderer(components, container); //Erstellt einen simplen THREE.WebGLRenderer
+world.renderer = new TOC.SimpleRenderer(engineComponents, viewerContainer);
+world.camera = new TOC.OrthoPerspectiveCamera(engineComponents);
+await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25);
 
-world.camera = new OBC.OrthoPerspectiveCamera(components); //automatischer Wechsel zwischen Orthographic und Perspective.
-await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25); //setLookAt(fromX, fromY, fromZ, toX, toY, toZ)
+engineComponents.init();
+engineComponents.get(TOC.Grids).create(world);
 
-components.init(); //Startet intern alle Komponenten
-components.get(OBC.Grids).create(world);
+// Model laden
+const fragmentManager = engineComponents.get(TOC.FragmentsManager);
+const workerObjectUrl = await getWorkerUrl(fragmentWorkerUrl);
+fragmentManager.init(workerObjectUrl);
 
-// ─────────── Fragments-Manager ───────────
-const githubUrl = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
-const fetchedUrl = await fetch(githubUrl);
-const workerBlob = await fetchedUrl.blob();
-const workerFile = new File([workerBlob], "worker.mjs", { type: "text/javascript" });
-const workerUrl = URL.createObjectURL(workerFile);
-
-const fragments = components.get(OBC.FragmentsManager); //FragmentsManager: Teilt das IFC-Modell in kleine Teile ("Fragments") auf, damit du z. B. Dinge ausblenden, hervorheben, selektieren kannst.
-fragments.init(workerUrl);
-
+// Event handlers
 function handleSelect(selection) {
-  highlightSelection(components, selection);
+  highlightSelection(engineComponents, selection);
   setReference({
     label: `Item ${selection.itemId}`,
     modelId: selection.modelId,
@@ -42,24 +37,30 @@ function handleSelect(selection) {
   });
 }
 
-initRaycaster(components, world, handleSelect);
+initRaycaster(engineComponents, world, handleSelect);
 
-world.camera.controls.addEventListener("rest", () => fragments.core.update(true)); //aktualisiert nach Maussteuerung
+world.camera.controls.addEventListener("change", () => fragmentManager.core.update(true));
 
-fragments.list.onItemSet.add(({ value: model }) => {
+fragmentManager.list.onItemSet.add(({ value: model }) => {
   model.useCamera(world.camera.three);
-  world.scene.three.add(model.object); //add() fügt eine Listener-Funktion hinzu - Fügt das 3D-Modell zur THREE.Scene hinzu /sichtbar machen.
-
-  fragments.core.update(true);
+  world.scene.three.add(model.object);
+  fragmentManager.core.update(true);
 });
 
-// ─────────── Fragments-Datei laden ───────────
-const loadFrag = async (path = "/frags/school_str.frag") => {
-  const file = await fetch(path);
-  const buffer = await file.arrayBuffer(); //Binärdaten umwandeln
-  await fragments.core.load(buffer, { modelId: "school_str" });
-};
-loadFrag();
+// Initialization
+await loadFragments(fragmentManager);
+let isRendering = true;
 
-// ─────────── Render-Loop ───────────
+function animate() {
+  if (isRendering) {
+    world.renderer.render();
+  }
+}
+
+world.renderer.setAnimationLoop(animate);
+
+document.addEventListener("visibilitychange", () => {
+  isRendering = !document.hidden;
+});
+
 world.renderer.setAnimationLoop(() => world.renderer.render());
