@@ -1,10 +1,10 @@
 import { escapeHTML } from "./utils.js";
 
-export const log = document.getElementById('chat-messages');
-export const form = document.getElementById('input-elements');
-export const input = document.getElementById('input-field');
+export const chatMessages = document.getElementById('chat-messages');
+export const inputForm = document.getElementById('input-form');
+export const inputField = document.getElementById('input-field');
 export const referenceContainer = document.getElementById('chat-reference-container');
-export const referenceText = document.getElementById('chat-reference-text');
+export const referenceLabel = document.getElementById('chat-reference-label');
 export const clearReferenceBtn = document.getElementById('clear-reference-btn');
 
 export function addMsgToDOM({ text, time, reference }) {
@@ -41,6 +41,6 @@ export function addMsgToDOM({ text, time, reference }) {
 
   wrapper.appendChild(message);
   wrapper.appendChild(meta);
-  log.appendChild(wrapper);
-  log.scrollTop = log.scrollHeight;
+  chatMessages.appendChild(wrapper);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }

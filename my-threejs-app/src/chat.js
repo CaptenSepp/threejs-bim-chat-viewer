@@ -1,4 +1,4 @@
-import { addMsgToDOM, form, input, referenceContainer, referenceText, clearReferenceBtn } from "./chat-ui.js";
+import { addMsgToDOM, inputForm as inputForm, inputField, referenceContainer, referenceLabel, clearReferenceBtn } from "./chat-ui.js";
 
 const STORAGE_KEY = 'chat-history';
 
@@ -7,40 +7,40 @@ let currentReference = null;
 const messages = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 
 // API
-export function setReference(ref) {
+export function setReference(ref) { // Kopplung 3D → Chat
   currentReference = ref;
-  referenceText.textContent = ref.label;
+  referenceLabel.textContent = ref.label;
   referenceContainer.classList.remove('hidden');
 }
 
 export function clearReference() {
   currentReference = null;
-  referenceText.textContent = '';
+  referenceLabel.textContent = '';
   referenceContainer.classList.add('hidden');
 }
 
 // Event listeners
 clearReferenceBtn.addEventListener('click', clearReference);
 
-input.addEventListener('keydown', e => {
+inputField.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    inputForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   }
 });
 
-form.addEventListener('submit', e => {
+inputForm.addEventListener('submit', e => {
   e.preventDefault();
-  const text = input.value.trim();
+  const text = inputField.value.trim(); // Verhindert Whitespace
   if (!text) return;
 
-  const msg = { text, time: Date.now(), reference: currentReference };
+  const msg = {time: Date.now(), reference: currentReference, text};
   messages.push(msg);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
   addMsgToDOM(msg);
 
-  input.value = '';
-  input.focus();
+  inputField.value = '';
+  inputField.focus();
   clearReference();
 });
 
