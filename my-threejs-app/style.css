@@ -2,9 +2,8 @@
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
+  box-sizing: border-box; /* Breite/Höhe inkl. Padding & Border */ 
 }
-
 /* ---------- Design-Variablen ---------- */
 :root {
   --chat-width: 320px;
@@ -62,7 +61,8 @@ body {
   flex: 1;
   padding: 12px 14px;
   overflow-y: auto;
-  background: var(--chat-bg);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
 }
 #chat-messages::-webkit-scrollbar {
   width: 8px;
@@ -71,10 +71,7 @@ body {
   background: var(--scroll-thumb);
   border-radius: 4px;
 }
-#chat-messages {
-  scrollbar-width: thin;
-  scrollbar-color: var(--scroll-thumb) transparent;
-}
+
 
 /* Nachrichten-Bubbles */
 .message-wrapper {
@@ -174,7 +171,7 @@ body {
 #three-canvas {
   flex: 1;
   display: block;
-  background: var(--bg);
+  /* background: var(--bg); */
   cursor: pointer;
 }
 
