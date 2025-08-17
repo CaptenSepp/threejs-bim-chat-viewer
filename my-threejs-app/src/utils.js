@@ -12,7 +12,8 @@ export async function loadFragments(fragments, path = "/frags/school_str.frag") 
 }
 
 export function escapeHTML(str) {
-  return str.replace(/[&<>"']/g, m => ({
+  const s = String(str ?? 'undefined!'); // Fehler im chat verhindern
+  return s.replace(/[&<>"']/g, m => ({
     '&': '&amp;',   // Ampersand  maskieren
     '<': '&lt;',    // Tag-Start
     '>': '&gt;',    // Tag-Ende
