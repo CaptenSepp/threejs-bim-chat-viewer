@@ -10,7 +10,7 @@ const viewerContainer = document.getElementById("three-canvas");
 const engineComponents = new TOC.Components(); // Zentrales Service-Registry-Objekt der Engine
 window.highlightFromChat = sel => highlightSelection(engineComponents, sel); // Re-highlights im 3D
 
-const worlds = engineComponents.get(TOC.Worlds);
+// const worlds = engineComponents.get(TOC.Worlds);
 const world = worlds.create();
 world.scene = new TOC.SimpleScene(engineComponents);
 world.scene.setup();
@@ -28,7 +28,7 @@ const workerObjectUrl = await getWorkerUrl(fragmentWorkerUrl);
 fragmentManager.init(workerObjectUrl);
 
 // Event handlers
-function handleSelect(selection) {
+function handleSelect(selection) { 
   highlightSelection(engineComponents, selection);
   setReference({
     label: `Item ${selection.itemId}`,
@@ -39,9 +39,9 @@ function handleSelect(selection) {
 
 initRaycaster(engineComponents, world, handleSelect);
 
-world.camera.controls.addEventListener("change", () => fragmentManager.core.update(true));
+world.camera.controls.addEventListener("change", () => fragmentManager.core.update(true)); // position ändert sich "change"
 
-fragmentManager.list.onItemSet.add(({ value: model }) => {
+fragmentManager.list.onItemSet.add(({ value: model }) => { // fragmentManager.list = aller geladenen Fragment-Modelle (Key: modelId, Value: model-Objekt
   model.useCamera(world.camera.three);
   world.scene.three.add(model.object); // Fügt das geladene 3D-Objekt in die Three.js-Szene ein
   fragmentManager.core.update(true); // Re-Render

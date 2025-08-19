@@ -33,5 +33,5 @@ export function highlightSelection(components, selection) {
   const frags = components.get(FragmentsManager);
   frags.resetHighlight(); // Remove Highlight
   frags.highlight(HIGHLIGHT_STYLE, selected);
-  frags.core?.update(true);
+  frags.core?.update(true); // Sofortiges Re-Render anstoßen
 }
