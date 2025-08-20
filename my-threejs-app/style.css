@@ -133,7 +133,9 @@ body {
   margin-bottom: var(--space-3);
   align-items: flex-start;
 }
-.message {
+
+/* !!!: beter organize the stylings*/
+.message {  
   background: var(--bubble-bg);
   padding: var(--space-2) var(--space-2-5);
   border-radius: var(--radius);
@@ -155,9 +157,7 @@ body {
   font-size: var(--fs-meta);
   color: var(--meta-text);
 }
-.message-wrapper.self .meta {
-  text-align: right;
-}
+
 .message-reference {
   display: block;
   font-size: var(--fs-ref);

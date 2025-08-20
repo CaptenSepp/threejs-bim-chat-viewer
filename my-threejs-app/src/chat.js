@@ -1,15 +1,15 @@
-import { addMsgToDOM, inputForm as inputForm, inputField, referenceContainer, referenceLabel, clearReferenceBtn } from "./chat-ui.js";
+import { addMsgToDOM, inputForm as chatInputForm, inputField as chatInputField, referenceContainer, referenceLabel, clearReferenceBtn } from "./chat-ui.js";
 
 const STORAGE_KEY = 'chat-history';
 
 // State
 let currentReference = null;
-const messages = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+const messageHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 
 // API
-export function setReference(ref) { // Kopplung 3D → Chat
-  currentReference = ref;
-  referenceLabel.textContent = ref.label;
+export function setReference(referenceObject) { // Kopplung 3D → Chat
+  currentReference = referenceObject;
+  referenceLabel.textContent = referenceObject.label;
   referenceContainer.classList.remove('hidden');
 }
 
@@ -22,27 +22,27 @@ export function clearReference() {
 // Event listeners
 clearReferenceBtn.addEventListener('click', clearReference);
 
-inputField.addEventListener('keydown', e => {
+chatInputField.addEventListener('onChatInputKeyDown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    inputForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    chatInputForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   }
 });
 
-inputForm.addEventListener('submit', e => {
+chatInputForm.addEventListener('onChatMessageSubmit', e => {
   e.preventDefault();
-  const text = inputField.value.trim(); // Verhindert Whitespace
+  const text = chatInputField.value.trim(); // Verhindert Whitespace
   if (!text) return;
 
   const msg = {time: Date.now(), reference: currentReference, text};
-  messages.push(msg);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  messageHistory.push(msg);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory));
   addMsgToDOM(msg);
 
-  inputField.value = '';
-  inputField.focus();
+  chatInputField.value = '';
+  chatInputField.focus();
   clearReference();
 });
 
 // Initialization
-messages.forEach(addMsgToDOM);
+messageHistory.forEach(addMsgToDOM);

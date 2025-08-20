@@ -1,5 +1,5 @@
-import * as TOC from "@thatopen/components"; // Klassen wie Components, Worlds, SimpleScene etc.
-import { setReference } from "./chat.js"; // Kopplung 3D-Selektion ↔ Chat
+import * as TOC from "@thatopen/components";                                 // Klassen wie Components, Worlds, SimpleScene etc.
+import { setReference } from "./chat.js";                                    // Kopplung 3D-Selektion ↔ Chat
 import { highlightSelection, initRaycaster } from "./raycaster.js";
 import { getWorkerUrl, loadFragments } from "./utils.js";
 
@@ -7,10 +7,10 @@ const fragmentWorkerUrl = "https://thatopen.github.io/engine_fragment/resources/
 const viewerContainer = document.getElementById("three-canvas");
 
 // Core logic
-const engineComponents = new TOC.Components(); // Zentrales Service-Registry-Objekt der Engine
+const engineComponents = new TOC.Components();                               // Zentrales Service-Registry-Objekt der Engine
 window.highlightFromChat = sel => highlightSelection(engineComponents, sel); // Re-highlights im 3D
 
-// const worlds = engineComponents.get(TOC.Worlds);
+const worlds = engineComponents.get(TOC.Worlds);
 const world = worlds.create();
 world.scene = new TOC.SimpleScene(engineComponents);
 world.scene.setup();
@@ -28,7 +28,7 @@ const workerObjectUrl = await getWorkerUrl(fragmentWorkerUrl);
 fragmentManager.init(workerObjectUrl);
 
 // Event handlers
-function handleSelect(selection) { 
+function handleRaycastSelection(selection) {
   highlightSelection(engineComponents, selection);
   setReference({
     label: `Item ${selection.itemId}`,
@@ -37,30 +37,28 @@ function handleSelect(selection) {
   });
 }
 
-initRaycaster(engineComponents, world, handleSelect);
+initRaycaster(engineComponents, world, handleRaycastSelection);
 
 world.camera.controls.addEventListener("change", () => fragmentManager.core.update(true)); // position ändert sich "change"
 
 fragmentManager.list.onItemSet.add(({ value: model }) => { // fragmentManager.list = aller geladenen Fragment-Modelle (Key: modelId, Value: model-Objekt
-  model.useCamera(world.camera.three);
-  world.scene.three.add(model.object); // Fügt das geladene 3D-Objekt in die Three.js-Szene ein
-  fragmentManager.core.update(true); // Re-Render
+  model.useCamera(world.camera.three);                     // Verdrahtet  internen Shader/States des Modells mit Kamera‑Instanz
+  world.scene.three.add(model.object);                     // Fügt das geladene 3D-Objekt in die Three.js-Szene ein
+  fragmentManager.core.update(true);                       // Re-Render
 });
 
 // Initialization
 await loadFragments(fragmentManager);
 let isRendering = true;
 
-function animate() {
+function renderFrame() {
   if (isRendering) {
     world.renderer.render();
   }
 }
 
-world.renderer.setAnimationLoop(animate);
+world.renderer.setAnimationLoop(renderFrame);
 
 document.addEventListener("visibilitychange", () => {
   isRendering = !document.hidden;
 });
-
-world.renderer.setAnimationLoop(() => world.renderer.render());
