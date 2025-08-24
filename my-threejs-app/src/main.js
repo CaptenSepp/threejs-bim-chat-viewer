@@ -1,56 +1,70 @@
-import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
-import { initRaycaster } from './raycaster.js';
+import * as THREE from "three";
+import * as OBC  from "@thatopen/components"; //Open Boundary Conditions
+import { setReference } from "./chat.js";
+import { initRaycaster, highlightSelection, clearHighlight } from "./raycaster.js";
 
-/* Canvas + Renderer ------------------------------------------------------- */
-const canvas = document.getElementById('three-canvas');
+const container = document.getElementById("three-canvas");
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
-renderer.setClearColor(0x141414);
+// ─────────── Welt einrichten ───────────
+const components = new OBC.Components(); //Component-Manager
+window.highlightFromChat = sel => highlightSelection(components, sel);
 
-/* Szene & Kamera ---------------------------------------------------------- */
-const scene  = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75,1,0.1,1000);
-camera.position.z = 4;
-scene.add(camera);
-// scene.add(AmbientLight);
+const worlds = components.get(OBC.Worlds); //Worlds-Komponente – sie kann mehrere 3D-Welten erzeugen
+const world  = worlds.create();
+world.scene    = new OBC.SimpleScene(components); //Erstellt ein neues Scene-Objekt (3D-Welt) - Licht, Hintergrundfarbe, THREE.Scene-Objekt
+//three = new THREE.Scene() und three.background = new THREE.Color(...)
 
-/* Beispiel-Würfel --------------------------------------------------------- */
-const cube = new THREE.Mesh(
-  new THREE.BoxGeometry(1,1,1),
-  new THREE.MeshStandardMaterial({ color:0xffa500, roughness:.5, metalness:.8 })
-);
-cube.name = 'Gebäudeteil: Würfel A';
-scene.add(cube);
+world.scene.setup(); //Alles vorbereiten für erste Darstellung.
+world.scene.three.background = null;
+world.renderer = new OBC.SimpleRenderer(components, container); //Erstellt einen simplen THREE.WebGLRenderer
 
-/* Licht ------------------------------------------------------------------- */
-scene.add(new THREE.DirectionalLight(0xffffff,1.5).position.set(5,5,5));
-scene.add(new THREE.AmbientLight(0x404040,1));
+world.camera   = new OBC.OrthoPerspectiveCamera(components); //automatischer Wechsel zwischen Orthographic und Perspective.
+await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25); //setLookAt(fromX, fromY, fromZ, toX, toY, toZ)
 
-/* Ray-Picker -------------------------------------------------------------- */
-initRaycaster(scene, camera, canvas);
+components.init(); //Startet intern alle Komponenten
+components.get(OBC.Grids).create(world);
 
-/* Resize-Handling --------------------------------------------------------- */
-function onResize(){
-  const chatW = window.innerWidth>768
-      ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--chat-width'))
-      : 0;
+// initRaycaster(components, world, (selection) => {
+//   console.log("Selected", selection);
+// });
 
-  const w = window.innerWidth - chatW;
-  const h = window.innerHeight - (window.innerWidth<=768
-      ? document.getElementById('chat-container').offsetHeight : 0);
+// ─────────── Fragments-Manager ───────────
+const githubUrl  = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
+const fetchedUrl = await fetch(githubUrl);
+const workerBlob = await fetchedUrl.blob();
+const workerFile = new File([workerBlob], "worker.mjs", { type: "text/javascript" });
+const workerUrl  = URL.createObjectURL(workerFile);
 
-  renderer.setSize(w,h);
-  camera.aspect = w/h;
-  camera.updateProjectionMatrix();
+const fragments = components.get(OBC.FragmentsManager); //FragmentsManager: Teilt das IFC-Modell in kleine Teile ("Fragments") auf, damit du z. B. Dinge ausblenden, hervorheben, selektieren kannst.
+fragments.init(workerUrl);
+
+function handleSelect(selection) {
+  highlightSelection(components, selection);
+  setReference({
+    label: `Item ${selection.itemId}`,
+    modelId: selection.modelId,
+    itemId: selection.itemId,
+  });
 }
-window.addEventListener('resize', onResize);
-onResize();
 
-/* Animation-Loop ---------------------------------------------------------- */
-function animate(){
-  requestAnimationFrame(animate);
-  cube.rotation.x += 0.005;
-  cube.rotation.y += 0.005;
-  renderer.render(scene,camera);
-}
-animate();
+initRaycaster(components, world, handleSelect);
+
+world.camera.controls.addEventListener("rest", () => fragments.core.update(true)); //aktualisiert nach Maussteuerung
+
+fragments.list.onItemSet.add(({ value: model }) => {
+  model.useCamera(world.camera.three);
+  world.scene.three.add(model.object); //add() fügt eine Listener-Funktion hinzu - Fügt das 3D-Modell zur THREE.Scene hinzu /sichtbar machen.
+
+  fragments.core.update(true);
+});
+
+// ─────────── Fragments-Datei laden ───────────
+const loadFrag = async (path = "/frags/school_str.frag") => {
+  const file   = await fetch(path);
+  const buffer = await file.arrayBuffer(); //Binärdaten umwandeln
+  await fragments.core.load(buffer, { modelId: "school_str" }); 
+};
+loadFrag();
+
+// ─────────── Render-Loop ───────────
+world.renderer.setAnimationLoop(() => world.renderer.render());

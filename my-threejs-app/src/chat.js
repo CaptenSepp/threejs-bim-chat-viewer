@@ -1,90 +1,97 @@
-/* Chat-DOM-Elemente ------------------------------------------------------- */
-const chatMessages  = document.getElementById('chat-messages');
-const inputField    = document.getElementById('input-field');
-const sendBtn       = document.getElementById('send-btn');
-const refBox        = document.getElementById('chat-reference-container');
-const refText       = document.getElementById('chat-reference-text');
-const clearRefBtn   = document.getElementById('clear-reference-btn');
+import { clearHighlight } from './raycaster.js';
 
-let currentRef = null;
+const log = document.getElementById('chat-messages');
+const form = document.getElementById('input-elements');
+const input = document.getElementById('input-field');
 
-/* Hilfsfunktionen --------------------------------------------------------- */
-function adjustTextareaHeight() {
-  inputField.style.height = 'auto';
-  inputField.style.height = `${inputField.scrollHeight}px`;
+// elements for optional message references
+const referenceContainer = document.getElementById('chat-reference-container');
+const referenceText = document.getElementById('chat-reference-text');
+const clearReferenceBtn = document.getElementById('clear-reference-btn');
 
-  const minH = parseFloat(getComputedStyle(document.documentElement)
-                .getPropertyValue('--input-min-height'));
-  sendBtn.style.height = `${Math.max(minH, inputField.clientHeight)}px`;
-}
-function updateSendButton() {
-  sendBtn.disabled = inputField.value.trim() === '';
-  adjustTextareaHeight();
-}
-function addMessage(text, author='Du', objectRef=null) {
-  const wrap  = document.createElement('div');
-  wrap.className = `message-wrapper${author==='Du' ? ' self' : ''}`;
+let currentReference = null;
 
-  const bubble = document.createElement('div');
-  bubble.className = 'message';
-
-  if (objectRef) {
-    const span = document.createElement('span');
-    span.className = 'message-reference';
-    span.textContent = `Referenz: ${objectRef}`;
-    bubble.append(span);
-  }
-  bubble.append(text);
-
-  const meta = document.createElement('div');
-  meta.className = 'meta';
-  meta.textContent = `${author} • ${new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`;
-
-  wrap.append(bubble, meta);
-  chatMessages.append(wrap);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-function send() {
-  const msg = inputField.value.trim();
-  if (!msg) return;
-  addMessage(msg, 'Du', currentRef);
-  inputField.value = '';
-  clearRef();
-  updateSendButton();
+export function setReference(ref) {
+  currentReference = ref;
+  referenceText.textContent = ref.label;
+  referenceContainer.classList.remove('hidden');
 }
 
-/* Objekt-Referenz-API ----------------------------------------------------- */
-function setRef(name) {
-  currentRef = name;
-  refText.textContent = `Referenz: ${name}`;
-  refBox.classList.remove('hidden');
-  inputField.focus();
-  adjustTextareaHeight();
-}
-function clearRef() {
-  currentRef = null;
-  refBox.classList.add('hidden');
-  refText.textContent = '';
-  adjustTextareaHeight();
+export function clearReference() {
+  currentReference = null;
+  referenceText.textContent = '';
+  referenceContainer.classList.add('hidden');
 }
 
-/* Event-Listener ---------------------------------------------------------- */
-inputField.addEventListener('input', updateSendButton);
-inputField.addEventListener('keydown', (e) => {
+clearReferenceBtn.addEventListener('click', clearReference);
+
+input.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    send();
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   }
 });
-sendBtn.addEventListener('click', send);
-clearRefBtn.addEventListener('click', clearRef);
 
-/* Initialisierung --------------------------------------------------------- */
-updateSendButton();
-addMessage('Hallo Martin.', 'System');
-addMessage('Hallo Jakob, wie kann ich dir helfen?', 'Du');
-addMessage('Ich habe eine Frage bezüglich dieses Teils des Models.', 'System');
-addMessage('Ja, natürlich, schieß los. Du kannst gerne darauf klicken und kommentieren.', 'Du');
+/* 1. Vorhandene Nachrichten aus localStorage laden */
+const STORAGE_KEY = 'chat-history';
+const messages = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+messages.forEach(addMsgToDOM);
 
-/* Globale API für Three.js ----------------------------------------------- */
-window.chatAPI = { setObjectReferenceForChat: setRef, clearObjectReference: clearRef };
+/* 2. Formular-Submit */
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+
+  /* Speichern & anzeigen */
+  const msg = { text, time: Date.now(), reference: currentReference };
+  messages.push(msg);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  addMsgToDOM(msg);
+
+  input.value = '';
+  input.focus();
+  clearReference();
+});
+
+/* 3. Helfer: Nachricht in DOM einsetzen */
+function addMsgToDOM({ text, time, reference }) {
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('message-wrapper', 'self');
+  if (reference && reference.label) {
+    const ref = document.createElement('div');
+    ref.classList.add('message-reference');
+    ref.textContent = reference.label;
+
+    // Züruckreferezieren
+    ref.dataset.modelId = reference.modelId;
+    ref.dataset.itemId = reference.itemId;
+    ref.addEventListener('click', () => {
+      if (ref.dataset.itemId) window.highlightFromChat({
+        modelId: ref.dataset.modelId,
+        itemId: +ref.dataset.itemId
+      });
+    });
+
+    wrapper.appendChild(ref);
+  }
+
+  const message = document.createElement('div');
+  message.classList.add('message');
+  message.innerHTML = escapeHTML(text);
+
+  const meta = document.createElement('div');
+  meta.classList.add('meta');
+  meta.textContent = new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  wrapper.appendChild(message);
+  wrapper.appendChild(meta);
+  log.appendChild(wrapper);
+  log.scrollTop = log.scrollHeight;
+}
+
+function escapeHTML(str) {
+  return str.replace(/[&<>"']/g, m => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+  }[m]));
+}
