@@ -22,16 +22,16 @@ export function clearReference() {
 // Event listeners
 clearReferenceBtn.addEventListener('click', clearReference);
 
-chatInputField.addEventListener('onChatInputKeyDown', e => {
+chatInputField.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
     chatInputForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   }
 });
 
-chatInputForm.addEventListener('onChatMessageSubmit', e => {
+chatInputForm.addEventListener('submit', e => {
   e.preventDefault();
-  const text = chatInputField.value.trim(); // Verhindert Whitespace
+  const text = chatInputField.value.trim();
   if (!text) return;
 
   const msg = {time: Date.now(), reference: currentReference, text};
