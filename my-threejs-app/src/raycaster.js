@@ -1,58 +1,40 @@
-import * as THREE from "three";
-import * as FRAGS from "@thatopen/fragments";
 import { FragmentsManager, Raycasters } from "@thatopen/components";
+import * as FRAGS from "@thatopen/fragments";
+import * as THREE from "three";
 
-const HIGHLIGHT_STYLE = {
-  color: new THREE.Color(0xff0000),
-  renderedFaces: FRAGS.RenderedFaces.ONE,
-  opacity: 0.8,
+const primaryColor = (typeof document !== "undefined" && typeof getComputedStyle === "function")
+  ? getComputedStyle(document.documentElement).getPropertyValue("--primary").trim()
+  : "#FF0000";
+
+
+export const HIGHLIGHT_STYLE = {
+  color: new THREE.Color(primaryColor || "#FF0000"),
+  color: new THREE.Color(primaryColor),
+  renderedFaces: FRAGS.RenderedFaces.ONE,                        // nur eine Seite der Fragmente hervorgehoben wird
+  opacity: 0.6,
   transparent: true,
 };
 
-export function initRaycaster(components, world, onSelect) {
-  const raycaster = components.get(Raycasters).get(world);
-  const canvas = world.renderer.three.domElement;
+export function initRaycaster(engineComponents, world, handleRaycastSelection) { // Raycaster konfigurierung mit Service-Container und World und Treffer 
+  const raycaster = engineComponents.get(Raycasters).get(world); // Raycasters.get(world) liefert ein Objekt mit Maus-Helfern und castRay()
+  const canvas = world.renderer.three.domElement;                // für registrieren Maus-Events
 
-  // canvas.addEventListener("click", async (event) => {
-  //   raycaster.mouse.updateMouseInfo(event);
-  //   const result = await components.get(FragmentsManager).raycast({
-  //     camera: world.camera.three,
-  //     mouse: raycaster.mouse.position,
-  //     dom: canvas,
-  //   });
-
-  //   if (result) {
-  //     onSelect({
-  //       modelId: result.fragments.modelId,
-  //       itemId: result.localId, //itemId to localId
-  //     });
-  //   }
-  // });
-
-
-  canvas.addEventListener('click', async (event) => {
-    raycaster.mouse.updateMouseInfo(event);        
-    const hit = await raycaster.castRay();         
-
-    if (hit) {
-      onSelect({
-        modelId: hit.fragments.modelId,
-        itemId: hit.localId
+  canvas.addEventListener('click', async event => {
+    raycaster.mouse.updateMouseInfo(event);
+    const rayHit = await raycaster.castRay();                    // raycaster.castRay() Wirft den Ray in die Szene und wartet auf das Treffer-Ergebnis und 'rayHit' enthält getroffene Fragmente/IDs
+    if (rayHit) {
+      handleRaycastSelection({
+        modelId: rayHit.fragments.modelId,
+        itemId: rayHit.localId,
       });
-      console.log(hit);
     }
   });
-
 }
 
 export function highlightSelection(components, selection) {
-  const items = { [selection.modelId]: [selection.itemId] };
-  const frags = components.get(FragmentsManager);
-  frags.resetHighlight();
-  frags.highlight(HIGHLIGHT_STYLE, items);
-  frags.core.update(true);
-}
-
-export function clearHighlight(components) {
-  components.get(FragmentsManager).resetHighlight();
-}
+  const withMouseSelected = { [selection.modelId]: [selection.itemId] };
+  const fragMan = components.get(FragmentsManager);
+  fragMan.resetHighlight(); // Remove Highlight
+  fragMan.highlight(HIGHLIGHT_STYLE, withMouseSelected);
+  fragMan.core?.update(true); // Sofortiges Re-Render anstoßen
+} 

@@ -1,97 +1,48 @@
-import { clearHighlight } from './raycaster.js';
+import { addMsgToDOM, inputForm as chatInputForm, inputField as chatInputField, referenceContainer, referenceLabel, clearReferenceBtn } from "./chat-ui.js";
 
-const log = document.getElementById('chat-messages');
-const form = document.getElementById('input-elements');
-const input = document.getElementById('input-field');
+const STORAGE_KEY = 'chat-history';
 
-// elements for optional message references
-const referenceContainer = document.getElementById('chat-reference-container');
-const referenceText = document.getElementById('chat-reference-text');
-const clearReferenceBtn = document.getElementById('clear-reference-btn');
-
+// State
 let currentReference = null;
+const messageHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 
-export function setReference(ref) {
-  currentReference = ref;
-  referenceText.textContent = ref.label;
+// API
+export function setReference(referenceObject) { // Kopplung 3D → Chat
+  currentReference = referenceObject;
+  referenceLabel.textContent = referenceObject.label;
   referenceContainer.classList.remove('hidden');
 }
 
 export function clearReference() {
   currentReference = null;
-  referenceText.textContent = '';
+  referenceLabel.textContent = '';
   referenceContainer.classList.add('hidden');
 }
 
+// Event listeners
 clearReferenceBtn.addEventListener('click', clearReference);
 
-input.addEventListener('keydown', e => {
+chatInputField.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    chatInputForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   }
 });
 
-/* 1. Vorhandene Nachrichten aus localStorage laden */
-const STORAGE_KEY = 'chat-history';
-const messages = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-messages.forEach(addMsgToDOM);
-
-/* 2. Formular-Submit */
-form.addEventListener('submit', e => {
+chatInputForm.addEventListener('submit', e => {
   e.preventDefault();
-  const text = input.value.trim();
+  const text = chatInputField.value.trim();
   if (!text) return;
 
-  /* Speichern & anzeigen */
-  const msg = { text, time: Date.now(), reference: currentReference };
-  messages.push(msg);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  const msg = {time: Date.now(), reference: currentReference, text};
+  messageHistory.push(msg);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory));
   addMsgToDOM(msg);
 
-  input.value = '';
-  input.focus();
+  chatInputField.value = '';
+  chatInputField.focus();
   clearReference();
 });
 
-/* 3. Helfer: Nachricht in DOM einsetzen */
-function addMsgToDOM({ text, time, reference }) {
-  const wrapper = document.createElement('div');
-  wrapper.classList.add('message-wrapper', 'self');
-  if (reference && reference.label) {
-    const ref = document.createElement('div');
-    ref.classList.add('message-reference');
-    ref.textContent = reference.label;
-
-    // Züruckreferezieren
-    ref.dataset.modelId = reference.modelId;
-    ref.dataset.itemId = reference.itemId;
-    ref.addEventListener('click', () => {
-      if (ref.dataset.itemId) window.highlightFromChat({
-        modelId: ref.dataset.modelId,
-        itemId: +ref.dataset.itemId
-      });
-    });
-
-    wrapper.appendChild(ref);
-  }
-
-  const message = document.createElement('div');
-  message.classList.add('message');
-  message.innerHTML = escapeHTML(text);
-
-  const meta = document.createElement('div');
-  meta.classList.add('meta');
-  meta.textContent = new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  wrapper.appendChild(message);
-  wrapper.appendChild(meta);
-  log.appendChild(wrapper);
-  log.scrollTop = log.scrollHeight;
-}
-
-function escapeHTML(str) {
-  return str.replace(/[&<>"']/g, m => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-  }[m]));
-}
+// Initialization
+messageHistory.forEach(addMsgToDOM);
