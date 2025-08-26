@@ -36,7 +36,7 @@ describe('raycaster initRaycaster', () => {
   it('invokes handler with ray hit ids on click', async () => {
     const handleRaycastSelection = vi.fn();
 
-    // Mockt canvas mit event
+    // Mock a canvas element that can register event handlers
     const canvas = {
       handlers: {},
       addEventListener: vi.fn((event, handler) => {
@@ -44,21 +44,25 @@ describe('raycaster initRaycaster', () => {
       })
     };
 
+    // World object exposes the canvas through nested properties
     const world = { renderer: { three: { domElement: canvas } } };
 
+    // Result returned by the mocked raycaster.
     const rayHit = { fragments: { modelId: 'model1' }, localId: 7 };
     const raycaster = {
       mouse: { updateMouseInfo: vi.fn() },
       castRay: vi.fn().mockResolvedValue(rayHit)
     };
 
+    // Mock services to retrieve the raycaster instance
     const raycastersService = { get: vi.fn(() => raycaster) };
     const engineComponents = { get: vi.fn(() => raycastersService) };
 
+    // Initialize the system and simulate a click event
     initRaycaster(engineComponents, world, handleRaycastSelection);
-
     await canvas.handlers.click({});
 
+    // The handler should receive the IDs from the raycast result
     expect(engineComponents.get).toHaveBeenCalledWith(Raycasters);
     expect(raycaster.mouse.updateMouseInfo).toHaveBeenCalled();
     expect(handleRaycastSelection).toHaveBeenCalledWith({ modelId: 'model1', itemId: 7 });
