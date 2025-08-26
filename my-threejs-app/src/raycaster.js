@@ -37,4 +37,4 @@ export function highlightSelection(components, selection) {
   fragMan.resetHighlight(); // Remove Highlight
   fragMan.highlight(HIGHLIGHT_STYLE, withMouseSelected);
   fragMan.core?.update(true); // Sofortiges Re-Render anstoßen
-}
+} 

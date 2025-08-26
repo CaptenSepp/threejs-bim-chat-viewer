@@ -63,4 +63,4 @@ describe('raycaster initRaycaster', () => {
     expect(raycaster.mouse.updateMouseInfo).toHaveBeenCalled();
     expect(handleRaycastSelection).toHaveBeenCalledWith({ modelId: 'model1', itemId: 7 });
   });
-});
+}); 

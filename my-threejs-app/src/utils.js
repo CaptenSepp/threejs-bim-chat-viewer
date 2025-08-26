@@ -34,4 +34,4 @@ export function escapeHTML(str) {
     '"': '&quot;',  // Attributwerte in Anführungszeichen
     "'": '&#039;',  // Anführungszeichen escapen
   }[m]));
-}
+} 

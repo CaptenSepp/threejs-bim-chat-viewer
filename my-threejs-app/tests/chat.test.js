@@ -52,4 +52,4 @@ describe('chat references', () => {
     expect(refText.textContent).toBe('');
     expect(container.classList.contains('hidden')).toBe(true);
   });
-});
+}); 
