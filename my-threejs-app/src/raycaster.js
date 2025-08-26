@@ -1,10 +1,14 @@
-import * as THREE from "three";
-import * as FRAGS from "@thatopen/fragments";
 import { FragmentsManager, Raycasters } from "@thatopen/components";
+import * as FRAGS from "@thatopen/fragments";
+import * as THREE from "three";
 
-const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+const primaryColor = (typeof document !== "undefined" && typeof getComputedStyle === "function")
+  ? getComputedStyle(document.documentElement).getPropertyValue("--primary").trim()
+  : "#FF0000";
 
-const HIGHLIGHT_STYLE = {
+
+export const HIGHLIGHT_STYLE = {
+  color: new THREE.Color(primaryColor || "#FF0000"),
   color: new THREE.Color(primaryColor),
   renderedFaces: FRAGS.RenderedFaces.ONE,                        // nur eine Seite der Fragmente hervorgehoben wird
   opacity: 0.6,
@@ -15,7 +19,7 @@ export function initRaycaster(engineComponents, world, handleRaycastSelection) {
   const raycaster = engineComponents.get(Raycasters).get(world); // Raycasters.get(world) liefert ein Objekt mit Maus-Helfern und castRay()
   const canvas = world.renderer.three.domElement;                // für registrieren Maus-Events
 
-  canvas.addEventListener('click', async event => {              
+  canvas.addEventListener('click', async event => {
     raycaster.mouse.updateMouseInfo(event);
     const rayHit = await raycaster.castRay();                    // raycaster.castRay() Wirft den Ray in die Szene und wartet auf das Treffer-Ergebnis und 'rayHit' enthält getroffene Fragmente/IDs
     if (rayHit) {
