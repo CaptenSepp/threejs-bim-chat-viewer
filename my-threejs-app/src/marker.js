@@ -1,46 +1,73 @@
 
-// src/marker.js
-import * as THREE from "three";
-import * as OBF from "@thatopen/components-front";
-import * as BUI from "@thatopen/ui";
+let markerEl;
 
-export function initMarkers(engineComponents, world) {
+//erstellt das DOM-Element
+export function initMarkers() {
+    if (markerEl) return markerEl;
+    markerEl = document.createElement('div');
+    markerEl.id = 'ifc-marker';
+    markerEl.style.position = 'absolute';
+    markerEl.style.pointerEvents = 'none';
+    markerEl.style.font = '12px/1.3 system-ui, sans-serif';
+    markerEl.style.background = 'rgba(0,0,0,0.7)';
+    markerEl.style.color = '#fff';
+    markerEl.style.padding = '6px 8px';
+    markerEl.style.borderRadius = '6px';
+    markerEl.style.whiteSpace = 'pre-line';
+    markerEl.style.maxWidth = '240px';
+    markerEl.style.zIndex = '9999';
+    markerEl.style.display = 'none';
+    document.body.appendChild(markerEl);
+    return markerEl;
+}
 
-    // --- UI init (BUI) ---
-    BUI.Manager.init(); // NEW: UI erst initialisieren
+/**
+ * Position auf dem Bildschirm updaten 
+ * @param {{x:number,y:number}} screen
+ */
 
-    // --- marker demo ---
-    const marker = engineComponents.get(OBF.Marker); // NEW
-    marker.threshold = 100;                           // NEW
+export function setMarkerPosition(screen) {
+    if (!markerEl) initMarkers();
+    markerEl.style.left = `${Math.round(screen.x)}px`;
+    markerEl.style.top = `${Math.round(screen.y)}px`;
+}
 
-    const x = Math.random() * 100 - 50;
-    const y = Math.random() * 10;
-    const z = Math.random() * 100 - 50;
+/**
+ * Metadaten in den Marker schreiben
+ * Erwartet ein Objekt mit beliebigen Properties 
+ * @param {object} meta
+ */
+export function setMarkerData(meta = {}) {
+    if (!markerEl) initMarkers();
 
-    const element = BUI.Component.create(() =>        // NEW
-        BUI.html`<bim-label style="font-size:20px">🚀</bim-label>`
-    );
+    // Reihenfolge wichtiger Felder 
+    const preferredKeys = [
+        'Name', 'GlobalId', 'type', 'ExpressID', 'PredefinedType', 'Tag',
+        'Level', 'Storey', 'ObjectType', 'Material'
+    ];
 
-    marker.create(world, element, new THREE.Vector3(x, y, z)); // NEW
+    const lines = [];
+    for (const key of preferredKeys) {
+        if (key in meta && meta[key] != null && `${meta[key]}` !== '') {
+            lines.push(`${key}: ${meta[key]}`);
+            if (lines.length === 6) break;
+        }
+    }
 
-    // --- optional: kleines Panel + Button (ohne TS-Generics) ---
-    const panel = BUI.Component.create(() =>          // NEW
-        BUI.html`
-    <bim-panel active label="Marker Tutorial" class="options-menu"></bim-panel>
-  `
-    );
-    document.body.append(panel);                      // NEW
+    // Fallback:
+    if (lines.length === 0) {
+        const entries = Object.entries(meta).slice(0, 6);
+        for (const [k, v] of entries) lines.push(`${k}: ${v}`);
+    }
 
-    const button = BUI.Component.create(() =>         // NEW
-        BUI.html`
-    <bim-button
-      class="phone-menu-toggler"
-      icon="solar:settings-bold"
-      @click="${() => {
-                panel.classList.toggle("options-menu-visible");
-            }}"
-    ></bim-button>
-  `
-    );
-    document.body.append(button);                     // NEW
+    markerEl.textContent = lines.join('\n');
+    markerEl.style.display = lines.length ? 'block' : 'none';
+}
+
+/**
+ * Marker anzeigen/ausblenden.
+ */
+export function showMarker(show) {
+    if (!markerEl) initMarkers();
+    markerEl.style.display = show ? 'block' : 'none';
 }
