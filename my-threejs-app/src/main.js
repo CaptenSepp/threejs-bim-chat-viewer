@@ -1,5 +1,6 @@
-import * as TOC from "@thatopen/components";                                 // Klassen wie Components, Worlds, SimpleScene etc.
-import { setReference } from "./chat.js";                                    // Kopplung 3D-Selektion ↔ Chat
+import * as TOC from "@thatopen/components"; // Klassen wie Components, Worlds, SimpleScene etc.
+import { setReference } from "./chat.js"; // Kopplung 3D-Selektion ↔ Chat
+import { hideObjectMeta, initObjectMeta, showObjectMeta } from "./object-meta.js";
 import { highlightSelection, initRaycaster } from "./raycaster.js";
 import { getWorkerUrl, loadFragments } from "./utils.js";
 
@@ -18,6 +19,7 @@ world.scene.three.background = null;
 world.renderer = new TOC.SimpleRenderer(engineComponents, viewerContainer);
 world.camera = new TOC.OrthoPerspectiveCamera(engineComponents);
 await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25);
+console.log("[main] world and camera initialized", { world }); // Debug world setup
 
 engineComponents.init();
 engineComponents.get(TOC.Grids).create(world);
@@ -26,18 +28,28 @@ engineComponents.get(TOC.Grids).create(world);
 const fragmentManager = engineComponents.get(TOC.FragmentsManager);
 const workerObjectUrl = await getWorkerUrl(fragmentWorkerUrl);
 fragmentManager.init(workerObjectUrl);
+console.log("[main] fragment manager initialized", { fragmentManager, workerObjectUrl }); // Debug fragment manager
 
 // Event handlers
 function handleRaycastSelection(selection) {
+  console.log("[main] handleRaycastSelection", selection); // Debug selection from raycaster
+  if (!selection) {
+    console.log("[main] no selection received"); // Debug empty selection
+    hideObjectMeta();
+    return;
+  }
   highlightSelection(engineComponents, selection);
   setReference({
     label: `Item ${selection.itemId}`,
     modelId: selection.modelId,
     itemId: selection.itemId,
   });
+  showObjectMeta(selection);
+  console.log("[main] metadata shown for selection"); // Debug after showing metadata
 }
 
 initRaycaster(engineComponents, world, handleRaycastSelection);
+initObjectMeta(engineComponents, world);
 
 world.camera.controls.addEventListener("change", () => fragmentManager.core.update(true)); // position ändert sich "change"
 
@@ -53,11 +65,19 @@ let isRendering = true;
 
 function renderFrame() {
   if (isRendering) {
-    world.renderer.render();
+    world.renderer.three.render(world.scene.three, world.camera.three);
   }
 }
 
-world.renderer.setAnimationLoop(renderFrame);
+if (world.renderer.three?.setAnimationLoop) {
+  world.renderer.three.setAnimationLoop(renderFrame);
+} else {
+  // Fallback RAF
+  (function loop() {
+    renderFrame();
+    requestAnimationFrame(loop);
+  })();
+}
 
 document.addEventListener("visibilitychange", () => {
   isRendering = !document.hidden;
