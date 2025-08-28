@@ -1,46 +1,37 @@
-
-// src/marker.js
-import * as THREE from "three";
+import { FragmentsManager } from "@thatopen/components";
 import * as OBF from "@thatopen/components-front";
-import * as BUI from "@thatopen/ui";
+import * as THREE from "three";
 
-export function initMarkers(engineComponents, world) {
+let marker, label, markerId;
 
-    // --- UI init (BUI) ---
-    BUI.Manager.init(); // NEW: UI erst initialisieren
+export function initMarkers(engineComponents) {
+  const tpl = document.getElementById("marker-template");
+  label = tpl.content.firstElementChild.cloneNode(true);
 
-    // --- marker demo ---
-    const marker = engineComponents.get(OBF.Marker); // NEW
-    marker.threshold = 100;                           // NEW
+  marker = engineComponents.get(OBF.Marker);
+}
 
-    const x = Math.random() * 100 - 50;
-    const y = Math.random() * 10;
-    const z = Math.random() * 100 - 50;
+export async function updateMarker(engineComponents, world, sel) {
+  const fragMan = engineComponents.get(FragmentsManager);
 
-    const element = BUI.Component.create(() =>        // NEW
-        BUI.html`<bim-label style="font-size:20px">🚀</bim-label>`
-    );
+  // Array mit genau einem Eintrag, Attribute auf Top-Level
+  const data = await fragMan.getData({ [sel.modelId]: [sel.itemId] });
+  const attrs = data[sel.modelId][0];
 
-    marker.create(world, element, new THREE.Vector3(x, y, z)); // NEW
+  // falls { value: ... }, .value
+  const val = (v) => (v && typeof v === "object" && "value" in v ? v.value : v);
 
-    // --- optional: kleines Panel + Button (ohne TS-Generics) ---
-    const panel = BUI.Component.create(() =>          // NEW
-        BUI.html`
-    <bim-panel active label="Marker Tutorial" class="options-menu"></bim-panel>
-  `
-    );
-    document.body.append(panel);                      // NEW
+  // Fünf Felder
+  label.querySelector(".val-name").textContent = val(attrs.Name);
+  label.querySelector(".val-objecttype").textContent = val(attrs.ObjectType);
+  label.querySelector(".val-tag").textContent = val(attrs.Tag);
+  label.querySelector(".val-category").textContent = val(attrs._category);
+  label.querySelector(".val-localid").textContent = val(attrs._localId);
 
-    const button = BUI.Component.create(() =>         // NEW
-        BUI.html`
-    <bim-button
-      class="phone-menu-toggler"
-      icon="solar:settings-bold"
-      @click="${() => {
-                panel.classList.toggle("options-menu-visible");
-            }}"
-    ></bim-button>
-  `
-    );
-    document.body.append(button);                     // NEW
+  // Position Mitte der BBox
+  const boxes = await fragMan.getBBoxes({ [sel.modelId]: [sel.itemId] });
+  const pos = boxes[0].getCenter(new THREE.Vector3());
+
+  if (markerId) marker.delete(markerId);
+  markerId = marker.create(world, label, pos, true);
 }
