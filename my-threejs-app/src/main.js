@@ -3,7 +3,7 @@ import * as OBF from "@thatopen/components-front";
 import { setReference } from "./chat.js"; // Kopplung 3D-Selektion ↔ Chat
 import { highlightSelection, initRaycaster } from "./raycaster.js";
 import { getWorkerUrl, loadFragments } from "./utils.js";
-import { initMarkers } from "./marker.js";
+import { initMarkers, updateMarker } from "./marker.js";
 
 const fragmentWorkerUrl = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
 const viewerContainer = document.getElementById("three-canvas");
@@ -30,13 +30,14 @@ const workerObjectUrl = await getWorkerUrl(fragmentWorkerUrl);
 fragmentManager.init(workerObjectUrl);
 
 // Event handlers
-function handleRaycastSelection(selection) {
+async function handleRaycastSelection(selection) {
   highlightSelection(engineComponents, selection);
   setReference({
     label: `Item ${selection.itemId}`,
     modelId: selection.modelId,
     itemId: selection.itemId,
   });
+  await updateMarker(engineComponents, world, selection);
 }
 
 initRaycaster(engineComponents, world, handleRaycastSelection);
