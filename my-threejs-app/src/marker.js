@@ -1,46 +1,52 @@
-
-// src/marker.js
-import * as THREE from "three";
+import { FragmentsManager } from "@thatopen/components";
 import * as OBF from "@thatopen/components-front";
 import * as BUI from "@thatopen/ui";
+import * as THREE from "three";
 
-export function initMarkers(engineComponents, world) {
+let marker, label, markerId;
 
-    // --- UI init (BUI) ---
-    BUI.Manager.init(); // NEW: UI erst initialisieren
-
-    // --- marker demo ---
-    const marker = engineComponents.get(OBF.Marker); // NEW
-    marker.threshold = 100;                           // NEW
-
-    const x = Math.random() * 100 - 50;
-    const y = Math.random() * 10;
-    const z = Math.random() * 100 - 50;
-
-    const element = BUI.Component.create(() =>        // NEW
-        BUI.html`<bim-label style="font-size:20px">🚀</bim-label>`
-    );
-
-    marker.create(world, element, new THREE.Vector3(x, y, z)); // NEW
-
-    // --- optional: kleines Panel + Button (ohne TS-Generics) ---
-    const panel = BUI.Component.create(() =>          // NEW
-        BUI.html`
-    <bim-panel active label="Marker Tutorial" class="options-menu"></bim-panel>
-  `
-    );
-    document.body.append(panel);                      // NEW
-
-    const button = BUI.Component.create(() =>         // NEW
-        BUI.html`
-    <bim-button
-      class="phone-menu-toggler"
-      icon="solar:settings-bold"
-      @click="${() => {
-                panel.classList.toggle("options-menu-visible");
-            }}"
-    ></bim-button>
-  `
-    );
-    document.body.append(button);                     // NEW
+export function initMarkers(engineComponents) {
+    BUI.Manager.init();
+    marker = engineComponents.get(OBF.Marker);
+    marker.threshold = 100;
+    label = BUI.Component.create(() => BUI.html`<Marker-Label class="meta-label"></Marker-Label>`);
 }
+
+export async function updateMarker(engineComponents, world, sel) {
+    const fragMan = engineComponents.get(FragmentsManager);
+
+    const data = await fragMan.getData({ [sel.modelId]: [sel.itemId] });
+    const item = (data?.[sel.modelId]?.[sel.itemId]) ?? (data?.[sel.modelId]?.[0]) ?? {};
+    const attrs = item?.attributes ?? item ?? {};
+    // Hilfsfunktion zuerst definieren
+    const val = v => (v && typeof v === "object" && "value" in v ? v.value : v ?? "—");
+
+    // gewünschte Felder extrahieren
+    const rows = [
+        ["Name", val(attrs.Name)],
+        ["ObjectType", val(attrs.ObjectType)],
+        ["Tag", val(attrs.Tag)],
+        ["Category", val(attrs._category)],
+        ["LocalId", val(attrs._localId)]
+    ];
+
+    // Label-Inhalt als kleine Tabelle (Styling via CSS-Klassen, keine Inline-Styles)
+    label.innerHTML = `
+    <div class="meta-wrap">
+      <table class="meta-table"><tbody>
+        ${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}
+      </tbody></table>
+    </div>
+  `;
+
+    // 2) In die Konsole ausgeben (leicht lesbar)
+    console.group(`[Marker] model:${sel.modelId} item:${sel.itemId}`);
+    console.log("item:", item);
+
+    const boxes = await fragMan.getBBoxes({ [sel.modelId]: [sel.itemId] });
+    const pos = boxes?.[0]?.getCenter(new THREE.Vector3()) ?? new THREE.Vector3();
+
+    if (markerId) marker.delete(markerId);
+    markerId = marker.create(world, label, pos, true);
+}
+
