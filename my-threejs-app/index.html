@@ -35,6 +35,20 @@
     </div>
     <div id="three-canvas"></div>
   </div>
+  <!-- ---------- Marker Template ---------- -->
+  <template id="marker-template">
+    <marker-label class="meta-wrap">
+      <table class="meta-table">
+        <tbody>
+          <tr><td>Name</td><td class="val-name"></td></tr>
+          <tr><td>ObjectType</td><td class="val-objecttype"></td></tr>
+          <tr><td>Tag</td><td class="val-tag"></td></tr>
+          <tr><td>Category</td><td class="val-category"></td></tr>
+          <tr><td>LocalId</td><td class="val-localid"></td></tr>
+        </tbody>
+      </table>
+    </marker-label>
+  </template>
   <!-- type="module" aktiviert den ES-Modul-Loader des Browsers (import/export, Deferred-Laden) -->
   <script type="module" src="/src/main.js"></script>
 </body>
