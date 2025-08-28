@@ -8,10 +8,12 @@
     "test:watch": "vitest --watch"
   },
   "dependencies": {
-    "@thatopen/components": "^3.1.0",
-    "@thatopen/fragments": "^3.1.0",
+    "@thatopen/components": "^3.1.2",
+    "@thatopen/components-front": "^3.1.6",
+    "@thatopen/fragments": "^3.1.6",
+    "@thatopen/ui": "^3.1.1",
     "three": "^0.178.0",
-    "web-ifc": "^0.0.69"
+    "web-ifc": "^0.0.70"
   },
   "devDependencies": {
     "jsdom": "^26.1.0",

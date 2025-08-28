@@ -1,7 +1,9 @@
-import * as TOC from "@thatopen/components";                                 // Klassen wie Components, Worlds, SimpleScene etc.
-import { setReference } from "./chat.js";                                    // Kopplung 3D-Selektion ↔ Chat
+import * as TOC from "@thatopen/components"; // Klassen wie Components, Worlds, SimpleScene etc.
+import * as OBF from "@thatopen/components-front";
+import { setReference } from "./chat.js"; // Kopplung 3D-Selektion ↔ Chat
 import { highlightSelection, initRaycaster } from "./raycaster.js";
 import { getWorkerUrl, loadFragments } from "./utils.js";
+import { initMarkers, updateMarker } from "./marker.js";
 
 const fragmentWorkerUrl = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
 const viewerContainer = document.getElementById("three-canvas");
@@ -15,7 +17,7 @@ const world = worlds.create();
 world.scene = new TOC.SimpleScene(engineComponents);
 world.scene.setup();
 world.scene.three.background = null;
-world.renderer = new TOC.SimpleRenderer(engineComponents, viewerContainer);
+world.renderer = new OBF.PostproductionRenderer(engineComponents, viewerContainer);
 world.camera = new TOC.OrthoPerspectiveCamera(engineComponents);
 await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25);
 
@@ -28,13 +30,14 @@ const workerObjectUrl = await getWorkerUrl(fragmentWorkerUrl);
 fragmentManager.init(workerObjectUrl);
 
 // Event handlers
-function handleRaycastSelection(selection) {
+async function handleRaycastSelection(selection) {
   highlightSelection(engineComponents, selection);
   setReference({
     label: `Item ${selection.itemId}`,
     modelId: selection.modelId,
     itemId: selection.itemId,
   });
+  await updateMarker(engineComponents, world, selection);
 }
 
 initRaycaster(engineComponents, world, handleRaycastSelection);
@@ -49,15 +52,23 @@ fragmentManager.list.onItemSet.add(({ value: model }) => { // fragmentManager.li
 
 // Initialization
 await loadFragments(fragmentManager);
+
+initMarkers(engineComponents, world);
+
+// Render loop
 let isRendering = true;
 
-function renderFrame() {
-  if (isRendering) {
-    world.renderer.render();
-  }
+if (world.renderer.three?.setAnimationLoop) {
+  world.renderer.three.setAnimationLoop(() => {
+    if (isRendering) world.renderer.update(); // NEW
+  });
+} else {
+  // NEW: Fallback für alte Umgebungen
+  (function loop() {
+    if (isRendering) world.renderer.update();
+    requestAnimationFrame(loop);
+  })();
 }
-
-world.renderer.setAnimationLoop(renderFrame);
 
 document.addEventListener("visibilitychange", () => {
   isRendering = !document.hidden;
