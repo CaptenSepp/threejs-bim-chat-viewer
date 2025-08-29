@@ -42,7 +42,6 @@ export function initRaycaster(engineComponents, world, handleRaycastSelection) {
       clearMarker();
     }
   });
-
 }
 
 export function highlightSelection(components, selection) {
