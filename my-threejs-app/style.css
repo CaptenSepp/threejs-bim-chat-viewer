@@ -1,4 +1,5 @@
 /* ---------- Global Box-Sizing ---------- */
+
 *,
 *::before,
 *::after {
@@ -82,22 +83,7 @@ body {
   color: var(--text);
 }
 
-/* --- Marker-Label --- */
-marker-label {
-  background: rgba(185, 99, 0, 0.5);
-  color: #000000ff;
-  padding: 6px 8px;
-  border-radius: 8px;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  line-height: 1.2;
-  /* Breite passt sich an den Inhalt an: */
-  display: inline-block;
-  width: max-content;
-  max-width: none;
-  backdrop-filter: blur(1px);
-  pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-}
+/* ---------- App Layout ---------- */
 
 
 #app-container {
@@ -114,7 +100,7 @@ marker-label {
   cursor: var(--cursor-pointer);
 }
 
-/* ---------- Chat-Sidebar ---------- */
+/* ---------- Chat ---------- */
 #chat-container {
   display: flex;
   flex-direction: column;
@@ -153,7 +139,7 @@ marker-label {
   align-items: flex-start;
 }
 
-/* !!!: beter organize the stylings*/
+/* !!!: better organize the stylings*/
 .message {  
   background: var(--bubble-bg);
   padding: var(--space-2) var(--space-2-5);
@@ -237,6 +223,39 @@ marker-label {
   cursor: not-allowed;
 }
 
+/* ---------- Marker ---------- */
+/* --- Marker-Label --- */
+marker-label {
+  background: rgba(185, 99, 0, 0.5);
+  color: #000000ff;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  line-height: 1.2;
+  /* Breite passt sich an den Inhalt an: */
+  display: inline-block;
+  width: max-content;
+  max-width: none;
+  backdrop-filter: blur(1px);
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* -------- Marker-Metadaten -------- */
+.meta-wrap {
+  display: inline-block;
+  width: max-content;
+}
+
+.meta-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  width: max-content;
+}
+
+.meta-table td { padding: 2px 6px; }
+.meta-table td:first-child { font-weight: 600; opacity: 0.9; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 768px) {
   #app-container {
@@ -257,18 +276,3 @@ marker-label {
   }
   
 }
-
-/* -------- Marker-Metadaten -------- */
-.meta-wrap {
-  display: inline-block;
-  width: max-content;
-}
-
-.meta-table {
-  border-collapse: collapse;
-  font-size: 12px;
-  width: max-content;
-}
-
-.meta-table td { padding: 2px 6px; }
-.meta-table td:first-child { font-weight: 600; opacity: 0.9; }
