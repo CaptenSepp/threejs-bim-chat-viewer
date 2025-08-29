@@ -1,10 +1,10 @@
 import * as TOC from "@thatopen/components"; // Klassen wie Components, Worlds, SimpleScene etc.
-import * as OBF from "@thatopen/components-front";
+import * as TOF from "@thatopen/components-front";
+import * as THREE from "three";
 import { setReference } from "./chat.js"; // Kopplung 3D-Selektion ↔ Chat
-import { initMarkers, updateMarker } from "./marker.js";
+import { initMarker, updateMarker } from "./marker.js";
 import { highlightSelection, initRaycaster } from "./raycaster.js";
 import { getWorkerUrl, loadFragments } from "./utils.js";
-import * as THREE from "three";   
 const fragmentWorkerUrl = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
 const viewerContainer = document.getElementById("three-canvas");
 
@@ -17,7 +17,7 @@ const world = worlds.create();
 world.scene = new TOC.SimpleScene(engineComponents);
 world.scene.setup();
 world.scene.three.background = null;
-world.renderer = new OBF.PostproductionRenderer(engineComponents, viewerContainer);
+world.renderer = new TOF.PostproductionRenderer(engineComponents, viewerContainer);
 world.camera = new TOC.OrthoPerspectiveCamera(engineComponents);
 await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25);
 
@@ -42,16 +42,16 @@ async function handleRaycastSelection(selection) {
   const controls = world.camera.controls;
   const eye = new THREE.Vector3();
   const target = new THREE.Vector3();
-  controls.getPosition(eye);
-  controls.getTarget(target);
+  controls.getPosition(eye);                   // Aktuelle Kamera-Position (Eye)
+  controls.getTarget(target);                  // Aktuelles Ziel
 
-  const offset = eye.sub(target);
-  const newEye = selection.center.clone().add(offset);
+  const offset = eye.sub(target);              // Offset = Eye - Target
+  const newEye = selection.center.clone().add(offset); // neuer Fokus + gleicher Offset
 
   await controls.setLookAt(
-    newEye.x, newEye.y, newEye.z,
-    selection.center.x, selection.center.y, selection.center.z,
-    true
+    newEye.x, newEye.y, newEye.z,              // gleich weit entfernt
+    selection.center.x, selection.center.y, selection.center.z, // der Objekt-Center
+    true                                       // smooth transition
   );
 }
 
@@ -68,7 +68,7 @@ fragmentManager.list.onItemSet.add(({ value: model }) => { // fragmentManager.li
 // Initialization
 await loadFragments(fragmentManager);
 
-initMarkers(engineComponents, world);
+initMarker(engineComponents, world);
 
 // Render loop
 let isRendering = true;

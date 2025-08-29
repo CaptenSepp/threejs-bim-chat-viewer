@@ -1,10 +1,9 @@
 import { FragmentsManager } from "@thatopen/components";
 import * as OBF from "@thatopen/components-front";
-import * as THREE from "three";
 
 let marker, label, markerId;
 
-export function initMarkers(engineComponents) {
+export function initMarker(engineComponents) {
   const tpl = document.getElementById("marker-template");
   label = tpl.content.firstElementChild.cloneNode(true);
 
@@ -29,7 +28,7 @@ export async function updateMarker(engineComponents, world, sel) {
   label.querySelector(".val-localid").textContent = val(attrs._localId);
 
   // Position Mitte der BBox
-  const pos = sel.center.clone();
+  const pos = sel.center.clone();                                           // Returns a new Box3 with the same min and max as this one
   pos.y += 12;
   if (markerId) marker.delete(markerId);
   markerId = marker.create(world, label, pos, true);

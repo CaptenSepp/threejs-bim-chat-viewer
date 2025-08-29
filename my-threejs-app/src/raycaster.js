@@ -11,7 +11,6 @@ const primaryColor = (typeof document !== "undefined" && typeof getComputedStyle
 
 export const HIGHLIGHT_STYLE = {
   color: new THREE.Color(primaryColor || "#FF0000"),
-  color: new THREE.Color(primaryColor),
   renderedFaces: FRAGS.RenderedFaces.ONE,                        // nur eine Seite der Fragmente hervorgehoben wird
   opacity: 0.6,
   transparent: true,
@@ -23,7 +22,7 @@ export function initRaycaster(engineComponents, world, handleRaycastSelection) {
 
   canvas.addEventListener('click', async event => {
     raycaster.mouse.updateMouseInfo(event);
-    const rayHit = await raycaster.castRay();                    // raycaster.castRay() Wirft den Ray in die Szene und wartet auf das Treffer-Ergebnis und 'rayHit' enthält getroffene Fragmente/IDs
+    const rayHit = await raycaster.castRay();                    // raycaster.castRay() Wirft den Ray in Szene wartet auf Ergebnis, 'rayHit' enthält getroffene Fragmente/IDs
     
     if (rayHit) {
       const modelId = rayHit.fragments.modelId;
@@ -31,11 +30,11 @@ export function initRaycaster(engineComponents, world, handleRaycastSelection) {
 
       // Center im Raycaster holen
       const fragMan = engineComponents.get(FragmentsManager);
-      const boxes = await fragMan.getBBoxes({ [modelId]: [itemId] });
-      const center = boxes[0].getCenter(new THREE.Vector3());
+      const [bBox] = await fragMan.getBBoxes({ [modelId]: [itemId] }); // result Array von Box3 // ThatOpen nutzt hier die three.js-Box3 für 3D-Modelle
+      const vector3Center = bBox.getCenter(new THREE.Vector3());   // füllt einen Vector3 mitdem Mittelpunkt der Box // getBBoxes ist ThatOpen-API
 
       // Center an den Callback übergeben
-      handleRaycastSelection({ modelId, itemId, center });
+      handleRaycastSelection({ modelId, itemId, center: vector3Center });
     } else {
       const fragMan = engineComponents.get(FragmentsManager);
       fragMan.resetHighlight(); // Remove Highlight
