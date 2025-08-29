@@ -24,11 +24,18 @@ export function initRaycaster(engineComponents, world, handleRaycastSelection) {
   canvas.addEventListener('click', async event => {
     raycaster.mouse.updateMouseInfo(event);
     const rayHit = await raycaster.castRay();                    // raycaster.castRay() Wirft den Ray in die Szene und wartet auf das Treffer-Ergebnis und 'rayHit' enthält getroffene Fragmente/IDs
+    
     if (rayHit) {
-      handleRaycastSelection({
-        modelId: rayHit.fragments.modelId,
-        itemId: rayHit.localId,
-      });
+      const modelId = rayHit.fragments.modelId;
+      const itemId = rayHit.localId;
+
+      // Center im Raycaster holen
+      const fragMan = engineComponents.get(FragmentsManager);
+      const boxes = await fragMan.getBBoxes({ [modelId]: [itemId] });
+      const center = boxes[0].getCenter(new THREE.Vector3());
+
+      // Center an den Callback übergeben
+      handleRaycastSelection({ modelId, itemId, center });
     } else {
       const fragMan = engineComponents.get(FragmentsManager);
       fragMan.resetHighlight(); // Remove Highlight
