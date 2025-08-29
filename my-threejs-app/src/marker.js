@@ -31,7 +31,14 @@ export async function updateMarker(engineComponents, world, sel) {
   // Position Mitte der BBox
   const boxes = await fragMan.getBBoxes({ [sel.modelId]: [sel.itemId] });
   const pos = boxes[0].getCenter(new THREE.Vector3());
-
+  pos.y += 12;
   if (markerId) marker.delete(markerId);
   markerId = marker.create(world, label, pos, true);
+}
+
+export function clearMarker() {
+  if (markerId) {
+    marker.delete(markerId);
+    markerId = null;
+  }
 }

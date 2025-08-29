@@ -1,6 +1,8 @@
 import { FragmentsManager, Raycasters } from "@thatopen/components";
 import * as FRAGS from "@thatopen/fragments";
 import * as THREE from "three";
+import { clearMarker } from "./marker.js";
+
 
 const primaryColor = (typeof document !== "undefined" && typeof getComputedStyle === "function")
   ? getComputedStyle(document.documentElement).getPropertyValue("--primary").trim()
@@ -27,8 +29,14 @@ export function initRaycaster(engineComponents, world, handleRaycastSelection) {
         modelId: rayHit.fragments.modelId,
         itemId: rayHit.localId,
       });
+    } else {
+      const fragMan = engineComponents.get(FragmentsManager);
+      fragMan.resetHighlight(); // Remove Highlight
+      fragMan.core?.update(true);
+      clearMarker();
     }
   });
+
 }
 
 export function highlightSelection(components, selection) {
