@@ -1,10 +1,10 @@
 import * as TOC from "@thatopen/components"; // Klassen wie Components, Worlds, SimpleScene etc.
 import * as OBF from "@thatopen/components-front";
 import { setReference } from "./chat.js"; // Kopplung 3D-Selektion ↔ Chat
+import { initMarkers, updateMarker } from "./marker.js";
 import { highlightSelection, initRaycaster } from "./raycaster.js";
 import { getWorkerUrl, loadFragments } from "./utils.js";
-import { initMarkers, updateMarker } from "./marker.js";
-
+import * as THREE from "three";   
 const fragmentWorkerUrl = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
 const viewerContainer = document.getElementById("three-canvas");
 
@@ -38,6 +38,21 @@ async function handleRaycastSelection(selection) {
     itemId: selection.itemId,
   });
   await updateMarker(engineComponents, world, selection);
+
+  const controls = world.camera.controls;
+  const eye = new THREE.Vector3();
+  const target = new THREE.Vector3();
+  controls.getPosition(eye);
+  controls.getTarget(target);
+
+  const offset = eye.sub(target);
+  const newEye = selection.center.clone().add(offset);
+
+  await controls.setLookAt(
+    newEye.x, newEye.y, newEye.z,
+    selection.center.x, selection.center.y, selection.center.z,
+    true
+  );
 }
 
 initRaycaster(engineComponents, world, handleRaycastSelection);
