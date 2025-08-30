@@ -34,12 +34,17 @@ export function initRaycaster(engineComponents, world, handleRaycastSelection) {
       const vector3Center = bBox.getCenter(new THREE.Vector3());   // füllt einen Vector3 mitdem Mittelpunkt der Box // getBBoxes ist ThatOpen-API
 
       // Center an den Callback übergeben
-      handleRaycastSelection({ modelId, itemId, center: vector3Center });
+      handleRaycastSelection({ modelId, itemId, center: vector3Center, box: bBox }); // NEW: Box (Box3) für fitToBox mitgeben
     } else {
-      const fragMan = engineComponents.get(FragmentsManager);
-      fragMan.resetHighlight(); // Remove Highlight
-      fragMan.core?.update(true);
-      clearMarker();
+      // NEW: Keine Aktion bei Klick ins Leere (Highlight/Marker bleiben)
+    }
+  });
+  document.addEventListener('keydown', (e) => { // NEW: ESC leert Highlight/Marker
+    if (e.key === 'Escape') {                   // NEW
+      const fragMan = engineComponents.get(FragmentsManager); // NEW
+      fragMan.resetHighlight();                 // NEW: Remove Highlight
+      fragMan.core?.update(true);               // NEW
+      clearMarker();                            // NEW
     }
   });
 }

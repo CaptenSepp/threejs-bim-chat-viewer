@@ -23,6 +23,10 @@ async function handleRaycastSelection(selection) {
   await updateMarker(engineComponents, world, selection);
 
   const controls = world.camera.controls;
+  if (selection.box) {
+    await controls.fitToBox(selection.box, true); // NEW: Objekt per Box3 zentrieren/zoomen
+    return; // NEW: manuelles setLookAt überspringen, wenn fitToBox genutzt wird
+  }
   const eye = new THREE.Vector3();
   const target = new THREE.Vector3();
   controls.getPosition(eye);                   // Aktuelle Kamera-Position (Eye)
