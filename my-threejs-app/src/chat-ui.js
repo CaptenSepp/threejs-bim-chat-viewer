@@ -7,7 +7,7 @@ export const referenceContainer = document.getElementById('chat-reference-contai
 export const referenceLabel = document.getElementById('chat-reference-label');
 export const clearReferenceBtn = document.getElementById('clear-reference-btn');
 
-function createReferenceChip(reference) {     // builds the clickable reference element
+function createReferenceChip(reference) {    // builds the clickable reference element
   const ref = document.createElement('div'); //???: Dieses Tag dient als klickbarer Verweis zurǬck ins 3D-Modell? moved comment + container element
   ref.classList.add('message-reference');    // style class
   ref.textContent = reference.label;         // display label
@@ -26,17 +26,17 @@ function createReferenceChip(reference) {     // builds the clickable reference 
 }
 
 export function appendMessageToChat({ text, time, reference }) { // neue Nachricht in den Chat mit optionale Reference
-  const msgWrapper = document.createElement('div');      // Erzeugt einen div pro Nachricht
-  msgWrapper.classList.add('message-wrapper', 'self');   // self ist der Sender von Message
+  const msgWrapper = document.createElement('div');       // Erzeugt einen div pro Nachricht
+  msgWrapper.classList.add('message-wrapper', 'self');    // self ist der Sender von Message
 
-  if (reference && reference.label) {                    // gultige Referenz
+  if (reference && reference.label) {                     // gultige Referenz
     const ref = createReferenceChip(reference);           //???: Dieses Tag dient als klickbarer Verweis zuruck ins 3D-Modell?
-    msgWrapper.appendChild(ref);                         // Referenz-Tag oberhalb der Nachricht
+    msgWrapper.appendChild(ref);                          // Referenz-Tag oberhalb der Nachricht
   }
 
   const chatMsgContainer = document.createElement('div');
   chatMsgContainer.classList.add('message');
-  chatMsgContainer.innerHTML = escapeHTML(text);         // Benutzertext sicher als HTML (maskiert Sonderzeichen)
+  chatMsgContainer.innerHTML = escapeHTML(text);          // Benutzertext sicher als HTML (maskiert Sonderzeichen)
 
   const chatMeta = document.createElement('div');
   chatMeta.classList.add('meta');

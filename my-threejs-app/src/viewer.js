@@ -6,7 +6,7 @@ import { createWorkerObjectUrl } from "./utils.js";
 // initialize
 // Returns the core objects 
 export async function createViewerEngine(viewerContainer) {
-  const engineComponents = new TOC.Components();                               // Zentrales Service-Registry-Objekt der Engine
+  const engineComponents = new TOC.Components();         // Zentrales Service-Registry-Objekt der Engine
 
   // World and scene setup
   const worlds = engineComponents.get(TOC.Worlds);
@@ -33,9 +33,9 @@ export async function createViewerEngine(viewerContainer) {
   // Keep fragments in sync with camera/scene changes
   world.camera.controls.addEventListener("change", () => fragments.core.update(true)); // position change
   fragments.list.onItemSet.add(({ value: model }) => { // fragments.list = all loaded Fragment-Modelle (Key: modelId, Value: model-Objekt
-    model.useCamera(world.camera.three);                     // connects intern Shader/States of Modells with camera instance
-    world.scene.three.add(model.object);                     // adds the loaded 3D-Objekt in the Three.js-Szene
-    fragments.core.update(true);                             // Re-Render
+    model.useCamera(world.camera.three);               // connects intern Shader/States of Modells with camera instance
+    world.scene.three.add(model.object);               // adds the loaded 3D-Objekt in the Three.js-Szene
+    fragments.core.update(true);                       // Re-Render
   });
 
   // Render loop
