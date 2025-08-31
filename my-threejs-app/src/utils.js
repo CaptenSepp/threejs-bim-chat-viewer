@@ -1,9 +1,9 @@
-async function fetchOrThrow(resource, errorPrefix) {                                // fetch check
-  const res = await fetch(resource);                                                // perform fetch
-  if (!res.ok) {                                                                    // throw
-    throw new Error(`${errorPrefix} ${resource}: ${res.status} ${res.statusText}`); // error message
+async function fetchOrThrow(resource, errorPrefix) {                                // Fetch check
+  const res = await fetch(resource);                                                // Perform fetch
+  if (!res.ok) {                                                                    // Throw
+    throw new Error(`${errorPrefix} ${resource}: ${res.status} ${res.statusText}`); // Error message
   }
-  return res;                                                                       // successful response
+  return res;                                                                       // Successful response
 }
 
 export async function getWorkerUrl(url) {
@@ -28,12 +28,12 @@ export async function loadFragments(fragments, path = "/frags/school_str.frag") 
 }
 
 export function escapeHTML(str) {
-  const s = String(str ?? 'undefined!'); // Fehler im chat verhindern
+  const s = String(str ?? 'undefined!'); // Prevent errors in chat 
   return s.replace(/[&<>"']/g, m => ({
-    '&': '&amp;',   // Ampersand  maskieren
-    '<': '&lt;',    // Tag-Start
-    '>': '&gt;',    // Tag-Ende
-    '"': '&quot;',  // Attributwerte in Anführungszeichen
-    "'": '&#039;',  // Anführungszeichen escapen
+    '&': '&amp;',   // Escape ampersand 
+    '<': '&lt;',    // Tag start 
+    '>': '&gt;',    // Tag end 
+    '"': '&quot;',  // Attribute values in double quotes 
+    "'": '&#039;',  // Escape single quotes 
   }[m]));
 } 

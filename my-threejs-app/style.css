@@ -3,10 +3,10 @@
 *,
 *::before,
 *::after {
-  box-sizing: border-box; /* Breite/Höhe inkl. Padding & Border */ 
+  box-sizing: border-box; /* Breite/Hohe inkl. Padding & Border */ 
 }
 
-/* ---------- Design-Variablen ---------- */
+/* ---------- Design-Variables ---------- */
 :root {
   /* Layout */
   --chat-width: 320px;
@@ -22,7 +22,7 @@
   --bubble-bg: #2c2c2c;
   --scroll-thumb: #444444;
 
-  /* Zusätzliche Farben für Elemente */
+  /* Zusatzliche Farben fur Elemente */
   --meta-text: #9d9d9d;
   --ref-bg: #643a00;
   --ref-text: #cccccc;
@@ -53,7 +53,7 @@
   --space-3-5: 14px;
   --space-4: 16px;
 
-  /* Input-Höhen */
+  /* Input-Hohen */
   --input-min-height: 40px;
   --input-max-height: 120px;
 

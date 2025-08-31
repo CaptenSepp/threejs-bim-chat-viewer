@@ -12,13 +12,13 @@ const { engineComponents, world, fragmentManager } = await initViewer(viewerCont
 
 window.highlightFromChat = sel => highlightSelection(engineComponents, sel); // Re-highlights im 3D
 
-async function focusCameraOnSelection(world, selection) { // NEW: extract camera focusing logic
-  const controls = world.camera.controls;              // NEW: access controls once
-  if (selection.box) {                                 // NEW: use box to center/zoom when available
-    await controls.fitToBox(selection.box, true);      // Objekt per Box3 zentrieren/zoomen NEW: delegate to controls
-    return;                                            // NEW: done when box is available
+async function focusCameraOnSelection(world, selection) { // extract camera focusing logic
+  const controls = world.camera.controls;              // access controls once
+  if (selection.box) {                                 // use box to center/zoom when available
+    await controls.fitToBox(selection.box, true);      // Objekt per Box3 zentrieren/zoomen delegate to controls
+    return;                                            // done when box is available
   }
-} 
+}
 
 // Event handlers
 async function handleRaycastSelection(selection) {
@@ -29,7 +29,7 @@ async function handleRaycastSelection(selection) {
     itemId: selection.itemId,
   });
   await updateMarker(engineComponents, world, selection);
-  await focusCameraOnSelection(world, selection); // NEW: delegate camera focusing
+  await focusCameraOnSelection(world, selection); // delegate camera focusing
 }
 
 initRaycaster(engineComponents, world, handleRaycastSelection);
