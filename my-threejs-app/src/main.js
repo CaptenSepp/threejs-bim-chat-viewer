@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { setReference } from "./chat.js"; // Kopplung 3D-Selektion ��' Chat
+import { setReference as setChatReference } from "./chat.js"; // Kopplung 3D-Selektion ��' Chat
 import { initMarker, updateMarker } from "./marker.js";
 import { highlightSelection, initRaycaster } from "./raycaster.js";
 import { loadFragments } from "./utils.js";
@@ -12,34 +12,24 @@ const { engineComponents, world, fragmentManager } = await initViewer(viewerCont
 
 window.highlightFromChat = sel => highlightSelection(engineComponents, sel); // Re-highlights im 3D
 
+async function focusCameraOnSelection(world, selection) { // NEW: extract camera focusing logic
+  const controls = world.camera.controls;              // NEW: access controls once
+  if (selection.box) {                                 // NEW: use box to center/zoom when available
+    await controls.fitToBox(selection.box, true);      // Objekt per Box3 zentrieren/zoomen NEW: delegate to controls
+    return;                                            // NEW: done when box is available
+  }
+} 
+
 // Event handlers
 async function handleRaycastSelection(selection) {
   highlightSelection(engineComponents, selection);
-  setReference({
+  setChatReference({
     label: `Item ${selection.itemId}`,
     modelId: selection.modelId,
     itemId: selection.itemId,
   });
   await updateMarker(engineComponents, world, selection);
-
-  const controls = world.camera.controls;
-  if (selection.box) {
-    await controls.fitToBox(selection.box, true); // NEW: Objekt per Box3 zentrieren/zoomen
-    return; // NEW: manuelles setLookAt überspringen, wenn fitToBox genutzt wird
-  }
-  const eye = new THREE.Vector3();
-  const target = new THREE.Vector3();
-  controls.getPosition(eye);                   // Aktuelle Kamera-Position (Eye)
-  controls.getTarget(target);                  // Aktuelles Ziel
-
-  const offset = eye.sub(target);              // Offset = Eye - Target
-  const newEye = selection.center.clone().add(offset); // neuer Fokus + gleicher Offset
-
-  await controls.setLookAt(
-    newEye.x, newEye.y, newEye.z,              // gleich weit entfernt
-    selection.center.x, selection.center.y, selection.center.z, // der Objekt-Center
-    true                                       // smooth transition
-  );
+  await focusCameraOnSelection(world, selection); // NEW: delegate camera focusing
 }
 
 initRaycaster(engineComponents, world, handleRaycastSelection);
@@ -48,4 +38,3 @@ initRaycaster(engineComponents, world, handleRaycastSelection);
 await loadFragments(fragmentManager);
 
 initMarker(engineComponents, world);
-
