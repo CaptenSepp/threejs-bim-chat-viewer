@@ -7,7 +7,7 @@ let currentReference = null;
 const messageHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 
 // API
-export function setReference(referenceObject) { // Kopplung 3D → Chat
+export function setReference(referenceObject) { // Connecting 3D → Chat
   currentReference = referenceObject;
   referenceLabel.textContent = referenceObject.label;
   referenceContainer.classList.remove('hidden');
