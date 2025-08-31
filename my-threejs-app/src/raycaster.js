@@ -1,22 +1,22 @@
 import { FragmentsManager, Raycasters } from "@thatopen/components";
 import * as FRAGS from "@thatopen/fragments";
 import * as THREE from "three";
-import { clearMarker } from "./marker.js";
+import { removeActiveMarker } from "./marker.js";
 
 
-const primaryColor = (typeof document !== "undefined" && typeof getComputedStyle === "function")
+const cssPrimaryColor = (typeof document !== "undefined" && typeof getComputedStyle === "function")
   ? getComputedStyle(document.documentElement).getPropertyValue("--primary").trim()
   : "#FF0000";
 
 
-export const HIGHLIGHT_STYLE = {
-  color: new THREE.Color(primaryColor || "#FF0000"),
+export const SELECTION_HIGHLIGHT_STYLE = {
+  color: new THREE.Color(cssPrimaryColor || "#FF0000"),
   renderedFaces: FRAGS.RenderedFaces.ONE,                   // Only one side of the fragments is highlighted
   opacity: 0.6,
   transparent: true,
 };
 
-async function getSelectionData(engineComponents, rayHit) { // helper to compute selection data
+async function buildSelectionFromRayHit(engineComponents, rayHit) { // helper to compute selection data
   const modelId = rayHit.fragments.modelId;                 // extract model id
   const itemId = rayHit.localId;                            // extract item id
   const fragMan = engineComponents.get(FragmentsManager);   // Get center via raycaster; access fragment manager
@@ -25,7 +25,7 @@ async function getSelectionData(engineComponents, rayHit) { // helper to compute
   return { modelId, itemId, center: vector3Center, box: bBox };    // pack selection data
 }
 
-export function initRaycaster(engineComponents, world, handleRaycastSelection) { // Raycaster configuration with service container and world; handle hits
+export function setupRaycastSelection(engineComponents, world, onSelectionResolved) { // Raycaster configuration with service container and world; handle hits
   const raycaster = engineComponents.get(Raycasters).get(world); // Raycasters.get(world) returns an object with mouse helpers and castRay()
   const canvas = world.renderer.three.domElement;                // For registering mouse events
 
@@ -34,8 +34,8 @@ export function initRaycaster(engineComponents, world, handleRaycastSelection) {
     const rayHit = await raycaster.castRay();   // Casts the ray into the scene and waits for a result; 'rayHit' contains hit fragments/IDs
 
     if (rayHit) {
-      const selection = await getSelectionData(engineComponents, rayHit); // compute selection via helper
-      handleRaycastSelection(selection);        // Pass selection (with center) to the callback; moved via helper
+      const selection = await buildSelectionFromRayHit(engineComponents, rayHit); // compute selection via helper
+      onSelectionResolved(selection);        // Pass selection (with center) to the callback; moved via helper
       return;
     }
   });
@@ -44,15 +44,15 @@ export function initRaycaster(engineComponents, world, handleRaycastSelection) {
       const fragMan = engineComponents.get(FragmentsManager);
       fragMan.resetHighlight();                 // Remove Highlight
       fragMan.core?.update(true);
-      clearMarker();
+      removeActiveMarker();
     }
   });
 }
 
-export function highlightSelection(components, selection) {
+export function applySelectionHighlight(components, selection) {
   const withMouseSelected = { [selection.modelId]: [selection.itemId] };
   const fragMan = components.get(FragmentsManager);
   fragMan.resetHighlight();                     // Remove Highlight
-  fragMan.highlight(HIGHLIGHT_STYLE, withMouseSelected);
+  fragMan.highlight(SELECTION_HIGHLIGHT_STYLE, withMouseSelected);
   fragMan.core?.update(true);                   // Sofortiges Re-Render anstoßen
 } 

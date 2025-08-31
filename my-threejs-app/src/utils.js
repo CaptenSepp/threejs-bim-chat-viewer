@@ -6,7 +6,7 @@ async function fetchOrThrow(resource, errorPrefix) {                            
   return res;                                                                       // Successful response
 }
 
-export async function getWorkerUrl(url) {
+export async function createWorkerObjectUrl(url) {
   try {
     const workerResponse = await fetchOrThrow(url, 'Failed to fetch worker at');
     const workerBlob = await workerResponse.blob();
@@ -17,7 +17,7 @@ export async function getWorkerUrl(url) {
   }
 }
 
-export async function loadFragments(fragments, path = "/frags/school_str.frag") {
+export async function loadFragmentsFromPath(fragments, path = "/frags/school_str.frag") {
   try {
     const file = await fetchOrThrow(path, 'Failed to fetch fragments at');
     const buffer = await file.arrayBuffer();

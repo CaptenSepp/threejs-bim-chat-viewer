@@ -1,11 +1,11 @@
 import * as TOC from "@thatopen/components"; // Klassen wie Components, Worlds, SimpleScene etc.
 import * as TOF from "@thatopen/components-front";
-import { getWorkerUrl } from "./utils.js";
+import { createWorkerObjectUrl } from "./utils.js";
 
 // Sets up the viewer
 // initialize
 // Returns the core objects 
-export async function initViewer(viewerContainer) {
+export async function createViewerEngine(viewerContainer) {
   const engineComponents = new TOC.Components();                               // Zentrales Service-Registry-Objekt der Engine
 
   // World and scene setup
@@ -25,17 +25,17 @@ export async function initViewer(viewerContainer) {
   engineComponents.get(TOC.Grids).create(world);
 
   // Model laden
-  const fragmentManager = engineComponents.get(TOC.FragmentsManager);
+  const fragments = engineComponents.get(TOC.FragmentsManager);
   const fragmentWorkerUrl = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
-  const workerObjectUrl = await getWorkerUrl(fragmentWorkerUrl);
-  fragmentManager.init(workerObjectUrl);
+  const workerObjectUrl = await createWorkerObjectUrl(fragmentWorkerUrl);
+  fragments.init(workerObjectUrl);
 
   // Keep fragments in sync with camera/scene changes
-  world.camera.controls.addEventListener("change", () => fragmentManager.core.update(true)); // position change
-  fragmentManager.list.onItemSet.add(({ value: model }) => { // fragmentManager.list = all loaded Fragment-Modelle (Key: modelId, Value: model-Objekt
+  world.camera.controls.addEventListener("change", () => fragments.core.update(true)); // position change
+  fragments.list.onItemSet.add(({ value: model }) => { // fragments.list = all loaded Fragment-Modelle (Key: modelId, Value: model-Objekt
     model.useCamera(world.camera.three);                     // connects intern Shader/States of Modells with camera instance
     world.scene.three.add(model.object);                     // adds the loaded 3D-Objekt in the Three.js-Szene
-    fragmentManager.core.update(true);                       // Re-Render
+    fragments.core.update(true);                             // Re-Render
   });
 
   // Render loop
@@ -49,5 +49,5 @@ export async function initViewer(viewerContainer) {
     isRendering = !document.hidden;
   });
 
-  return { engineComponents, world, fragmentManager };
+  return { engineComponents, world, fragments };
 }
