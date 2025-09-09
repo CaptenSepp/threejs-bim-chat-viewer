@@ -1,21 +1,20 @@
 import { beforeEach, describe, expect, it, afterEach } from 'vitest';
 
-let setReference, clearReference;
+let setComposerReference, clearComposerReference;
 
-beforeEach(async () => {                               // Minimales HTML-Gerüst für Zugriff auf DOM-Elemente
-  // IDs sind hier nach chat-ui.js
-  // Läuft VOR jedem einzelnen Test (saubere Ausgangslage)
+beforeEach(async () => { // sets up a minimal DOM for tests to simulate browser environment
+                         // element IDs match chat-ui.js (DOM contract) to match query selectors used by the code
+                         // runs before each test to reset state (test lifecycle)
   const store = {};
   global.localStorage = {
-    getItem: (key) => (key in store ? store[key] : null),
-    setItem: (key, value) => {
+    getItem: (key) => (key in store ? store[key] : null), // read value from in-memory store (mock storage)
+    setItem: (key, value) => {                            // write value to in-memory store (mock storage)
       store[key] = String(value);
     },
-    // removing the localstorage
-    removeItem: (key) => {
+    removeItem: (key) => {                                // removes a single key from localStorage (delete)
       delete store[key];
     },
-    clear: () => {
+    clear: () => {                                        // clears all keys in the mock
       for (const key in store) delete store[key];
     }
   };
@@ -28,9 +27,9 @@ beforeEach(async () => {                               // Minimales HTML-Gerüst
     <span id="chat-reference-label"></span>
     <button id="clear-reference-btn"></button>
   `;
-  const mod = await import('../src/chat.js');        // Lädt chat.js
-  setReference = mod.setReference;                   // API-Funktion setReference aus chat.js
-  clearReference = mod.clearReference;
+  const mod = await import('../src/chat.js');        // dynamically import chat module (dynamic import) to bind to DOM elements created above
+  setComposerReference = mod.setComposerReference;   // get API export
+  clearComposerReference = mod.clearComposerReference;
 });
 
 afterEach(() => {
@@ -40,16 +39,17 @@ afterEach(() => {
 
 describe('chat references', () => {
   it('sets and clears reference', () => {
-    setReference({ label: 'Item 1', modelId: 'm1', itemId: 1 });           // Aktiviere eine Referenz wie bei 3D → Chat-Flow
+    setComposerReference({ label: 'Item 1', modelId: 'm1', itemId: 1 });   // simulate setting a 3D chat reference (reference)
     const refText = document.getElementById('chat-reference-label');
     const container = document.getElementById('chat-reference-container');
 
-    expect(refText.textContent).toBe('Item 1');                            // Erwartung: Text zeigt "Item 1"
-    expect(container.classList.contains('hidden')).toBe(false);            // ...
+    expect(refText.textContent).toBe('Item 1');                            // expects label to show selected item
+    expect(container.classList.contains('hidden')).toBe(false);            // expects chip to be visible
 
-    clearReference();
+    clearComposerReference();
 
     expect(refText.textContent).toBe('');
-    expect(container.classList.contains('hidden')).toBe(true);
+    expect(container.classList.contains('hidden')).toBe(true);             // expects chip to hide after clearing
   });
 }); 
+

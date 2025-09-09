@@ -1,58 +1,66 @@
 import { FragmentsManager, Raycasters } from "@thatopen/components";
 import * as FRAGS from "@thatopen/fragments";
 import * as THREE from "three";
-import { clearMarker } from "./marker.js";
+import { removeActiveMarker } from "./marker.js";
 
 
-const primaryColor = (typeof document !== "undefined" && typeof getComputedStyle === "function")
+const cssPrimaryColor = (typeof document !== "undefined" && typeof getComputedStyle === "function")
   ? getComputedStyle(document.documentElement).getPropertyValue("--primary").trim()
   : "#FF0000";
 
 
-export const HIGHLIGHT_STYLE = {
-  color: new THREE.Color(primaryColor || "#FF0000"),
-  renderedFaces: FRAGS.RenderedFaces.ONE,                   // Only one side of the fragments is highlighted
+export const SELECTION_HIGHLIGHT_STYLE = {
+  color: new THREE.Color(cssPrimaryColor || "#FF0000"),
+  renderedFaces: FRAGS.RenderedFaces.ONE,                   // ???: render only front faces (Doku empfohlen)
   opacity: 0.6,
   transparent: true,
 };
 
-async function getSelectionData(engineComponents, rayHit) { // helper to compute selection data
-  const modelId = rayHit.fragments.modelId;                 // extract model id
-  const itemId = rayHit.localId;                            // extract item id
-  const fragMan = engineComponents.get(FragmentsManager);   // Get center via raycaster; access fragment manager
-  const [bBox] = await fragMan.getBBoxes({ [modelId]: [itemId] }); // Result array of Box3; ThatOpen uses Three.js Box3 for 3D models; get bounding box
-  const vector3Center = bBox.getCenter(new THREE.Vector3());       // Fills a Vector3 with the center of the box; getBBoxes is ThatOpen API; compute center
-  return { modelId, itemId, center: vector3Center, box: bBox };    // pack selection data
+async function buildSelectionFromRayHit(engineComponents, rayHit) { // builds selection info from a ray hit
+  const modelId = rayHit.fragments.modelId;                 // read model identifier (model id)
+  const itemId = rayHit.localId;                            // item identifier (local id)
+  let selection = { modelId, itemId };                      // minimal selection payload(data package) (fallback(backup/default)) to keep working when fragments API is unavailable, when there is no more data coming
+  try {
+    const fragMan = engineComponents.get(FragmentsManager); // get fragment manager if available
+    if (fragMan && typeof fragMan.getBBoxes === 'function') {
+      const [bBox] = await fragMan.getBBoxes({ [modelId]: [itemId] }); // fetch bounding box (Box3) to compute framing and marker position
+      const vector3Center = bBox.getCenter(new THREE.Vector3());       // compute center (Vector3)
+      selection = { modelId, itemId, center: vector3Center, box: bBox }; // enriched selection (with box) to enable camera/marker updates
+    }
+  } catch (_) {
+    // ignore if fragments manager is not present
+  }
+  return selection;                                         // return minimal or enriched selection
 }
 
-export function initRaycaster(engineComponents, world, handleRaycastSelection) { // Raycaster configuration with service container and world; handle hits
-  const raycaster = engineComponents.get(Raycasters).get(world); // Raycasters.get(world) returns an object with mouse helpers and castRay()
-  const canvas = world.renderer.three.domElement;                // For registering mouse events
+export function setupRaycastSelection(engineComponents, world, applySelectionEffects) { // sets up click raycasting and selection handling
+  const raycaster = engineComponents.get(Raycasters).get(world); // get raycaster for this spesific world to connect to the mouse
+  const canvas = world.renderer.three.domElement;                // canvas we attach events to (canvas element) to receive mouse events (listener)
 
-  canvas.addEventListener('click', async event => {
+  canvas.addEventListener('click', async event => {              // WAIT and LISTEN for CLICK in CANVAS :)
     raycaster.mouse.updateMouseInfo(event);
-    const rayHit = await raycaster.castRay();   // Casts the ray into the scene and waits for a result; 'rayHit' contains hit fragments/IDs
+    const rayHit = await raycaster.castRay();   // cast a ray and wait for a hit
 
     if (rayHit) {
-      const selection = await getSelectionData(engineComponents, rayHit); // compute selection via helper
-      handleRaycastSelection(selection);        // Pass selection (with center) to the callback; moved via helper
+      const selection = await buildSelectionFromRayHit(engineComponents, rayHit); // build selection data from the hit to include ids and bBox
+      applySelectionEffects(selection);      // hand selection to caller for effects (callback)
       return;
     }
   });
-  document.addEventListener('keydown', (e) => { // ESC clears highlight and marker
+  document.addEventListener('keydown', (e) => { // ESC clears highlight and active marker
     if (e.key === 'Escape') {
       const fragMan = engineComponents.get(FragmentsManager);
-      fragMan.resetHighlight();                 // Remove Highlight
+      fragMan.resetHighlight();                 // clear current highlight
       fragMan.core?.update(true);
-      clearMarker();
+      removeActiveMarker();
     }
   });
 }
 
-export function highlightSelection(components, selection) {
+export function applySelectionHighlight(components, selection) {
   const withMouseSelected = { [selection.modelId]: [selection.itemId] };
   const fragMan = components.get(FragmentsManager);
-  fragMan.resetHighlight();                     // Remove Highlight
-  fragMan.highlight(HIGHLIGHT_STYLE, withMouseSelected);
-  fragMan.core?.update(true);                   // Sofortiges Re-Render anstoßen
+  fragMan.resetHighlight();                     // clear previous highlight
+  fragMan.highlight(SELECTION_HIGHLIGHT_STYLE, withMouseSelected);
+  fragMan.core?.update(true);                   // force an immediate render update
 } 

@@ -1,48 +1,48 @@
-import { addMsgToDOM, inputForm as chatInputForm, inputField as chatInputField, referenceContainer, referenceLabel, clearReferenceBtn } from "./chat-ui.js";
+import { appendMessageToChat, inputForm, inputField, referenceContainer, referenceLabel, clearReferenceBtn } from "./chat-ui.js";
 
 const STORAGE_KEY = 'chat-history';
 
-// State
+// state: current selection reference and history (state)
 let currentReference = null;
 const messageHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 
 // API
-export function setReference(referenceObject) { // Connecting 3D → Chat
+export function setComposerReference(referenceObject) { // sets the current 3D selection as a chat reference to link a message to a picked item
   currentReference = referenceObject;
   referenceLabel.textContent = referenceObject.label;
   referenceContainer.classList.remove('hidden');
 }
 
-export function clearReference() {
+export function clearComposerReference() { // clears the current chat reference
   currentReference = null;
   referenceLabel.textContent = '';
   referenceContainer.classList.add('hidden');
 }
 
-// Event listeners
-clearReferenceBtn.addEventListener('click', clearReference);
+// event listeners for reference chip and input
+clearReferenceBtn.addEventListener('click', clearComposerReference);
 
-chatInputField.addEventListener('keydown', e => {
+inputField.addEventListener('keydown', e => { // send on Enter
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    chatInputForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    inputForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   }
 });
 
-chatInputForm.addEventListener('submit', e => {
+inputForm.addEventListener('submit', e => { // collect message and append to UI to render the message
   e.preventDefault();
-  const text = chatInputField.value.trim();
+  const text = inputField.value.trim();
   if (!text) return;
 
-  const msg = {time: Date.now(), reference: currentReference, text};
-  messageHistory.push(msg);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory));
-  addMsgToDOM(msg);
+  const message = { time: Date.now(), reference: currentReference, text }; // compose message object (payload) to store what we need
+  messageHistory.push(message);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // persist to local storage to restore chat after reload
+  appendMessageToChat(message);
 
-  chatInputField.value = '';
-  chatInputField.focus();
-  clearReference();
+  inputField.value = '';
+  inputField.focus();
+  clearComposerReference();
 });
 
-// Initialization
-messageHistory.forEach(addMsgToDOM);
+// render saved chat history
+messageHistory.forEach(appendMessageToChat);

@@ -1,64 +1,64 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getWorkerUrl, loadFragments } from '../src/utils.js';
+import { createWorkerObjectUrl, loadFragmentsFromPath } from '../src/utils.js';
 
-// Store original global functions so they can be restored after tests.
+// stores original globals to restore later to avoid polluting other tests
 const originalFetch = global.fetch;
 const originalCreateObjectURL = global.URL.createObjectURL;
 
-// Restore globals and clear mocks after each test to keep state clean.
+// restores globals and clears mocks after each test to keep tests isolated
 afterEach(() => {
   global.fetch = originalFetch;
   global.URL.createObjectURL = originalCreateObjectURL;
   vi.restoreAllMocks();
 });
 
-describe('getWorkerUrl', () => {
+describe('createWorkerObjectUrl', () => {
   it('returns object URL on successful fetch', async () => {
-    // Fake worker file returned by fetch.
+    // fake worker file returned by fetch (mock response) to simulate a successful network response
     const blob = new Blob(['worker']);
     const mockFetch = vi.fn().mockResolvedValue({ ok: true, blob: () => Promise.resolve(blob) });
     global.fetch = mockFetch;
     global.URL.createObjectURL = vi.fn(() => 'object-url');
 
-    // Execute the function under test.
-    const result = await getWorkerUrl('worker.js');
+    // execute the function under test (UUT) to capture the result for assertions
+    const result = await createWorkerObjectUrl('worker.js');
 
-    // Verify the mocked APIs were called correctly.
+    // verify calls and output (assertion) to ensure correct API usage
     expect(mockFetch).toHaveBeenCalledWith('worker.js');
     expect(URL.createObjectURL).toHaveBeenCalled();
     expect(result).toBe('object-url');
   });
 
   it('throws error when fetch fails', async () => {
-    // Simulate a network error.
+    // simulate a network error (rejected promise) to cover the error path
     global.fetch = vi.fn().mockRejectedValue(new Error('network'));
-    await expect(getWorkerUrl('worker.js')).rejects.toThrow(/network/);
+    await expect(createWorkerObjectUrl('worker.js')).rejects.toThrow(/network/);
   });
 });
 
-describe('loadFragments', () => {
+describe('loadFragmentsFromPath', () => {
   it('loads fragments on successful fetch', async () => {
-    // Mock a successful fetch returning an ArrayBuffer.
+    // mock fetch returning an ArrayBuffer (mock response) to simulate binary payload download
     const buffer = new ArrayBuffer(8);
     global.fetch = vi.fn().mockResolvedValue({ ok: true, arrayBuffer: () => Promise.resolve(buffer) });
     const load = vi.fn();
     const fragments = { core: { load } };
 
-    await loadFragments(fragments, '/path');
+    await loadFragmentsFromPath(fragments, '/path');
 
-    // The loader should receive the downloaded buffer.
+    // loader should receive the downloaded buffer to confirm integration between fetch and loader
     expect(global.fetch).toHaveBeenCalledWith('/path');
     expect(load).toHaveBeenCalledWith(buffer, { modelId: 'school_str' });
   });
 
   it('logs error when fetch fails', async () => {
-    // Simulate fetch failure and spy on console.error.
+    // simulate fetch failure and spy on console.error to assert error handling logic
     global.fetch = vi.fn().mockRejectedValue(new Error('fail'));
     const load = vi.fn();
     const fragments = { core: { load } };
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
-    await loadFragments(fragments, '/path');
+    await loadFragmentsFromPath(fragments, '/path');
 
     expect(errorSpy).toHaveBeenCalled();
     expect(load).not.toHaveBeenCalled();

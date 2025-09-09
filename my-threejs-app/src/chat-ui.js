@@ -7,36 +7,35 @@ export const referenceContainer = document.getElementById('chat-reference-contai
 export const referenceLabel = document.getElementById('chat-reference-label');
 export const clearReferenceBtn = document.getElementById('clear-reference-btn');
 
-function createReferenceTag(reference) {     // builds the clickable reference element
-  const ref = document.createElement('div'); //???: Dieses Tag dient als klickbarer Verweis zurǬck ins 3D-Modell? moved comment + container element
-  ref.classList.add('message-reference');    // style class
-  ref.textContent = reference.label;         // display label
-  ref.dataset.modelId = reference.modelId;   // store modelId
-  ref.dataset.itemId = reference.itemId;     // store itemId
-  ref.addEventListener('click', () => {      //!!!: Klick auf das Referenz-Tag ��' 3D-Highlight  moved comment + click handler
-
-    if (ref.dataset.itemId) {                // guard against missing id
-      window.highlightFromChat({             // invoke global highlighter
-        modelId: ref.dataset.modelId,        // pass modelId
-        itemId: +ref.dataset.itemId,         // ensure numeric id
+function createReferenceChip(reference) {    // creates a clickable chip that jumps back to the 3D selection (UI chip)
+  const clickableRefTag = document.createElement('div'); // container element for the chip
+  clickableRefTag.classList.add('message-reference');
+  clickableRefTag.textContent = reference.label;
+  clickableRefTag.dataset.modelId = reference.modelId;   // store modelId to target the correct model
+  clickableRefTag.dataset.itemId = reference.itemId;     // store itemId to target the specific element
+  clickableRefTag.addEventListener('click', () => {      // on click, re-select and highlight in 3D (interaction) to restore the selection from chat
+    if (clickableRefTag.dataset.itemId) {                // avoid missing id (guard) to prevent invalid highlighting
+      window.applyChatSelectionHighlight({   // trigger global highlighter
+        modelId: clickableRefTag.dataset.modelId,
+        itemId: +clickableRefTag.dataset.itemId,         // convert to number (type cast) to ensure numeric id
       });
     }
   });
-  return ref;                                // return built element
+  return clickableRefTag;
 }
 
-export function addMsgToDOM({ text, time, reference }) { // neue Nachricht in den Chat mit optionale Reference
-  const msgWrapper = document.createElement('div');      // Erzeugt einen div pro Nachricht
-  msgWrapper.classList.add('message-wrapper', 'self');   // self ist der Sender von Message
+export function appendMessageToChat({ text, time, reference }) { // renders a message in the chat (DOM update)
+  const msgWrapper = document.createElement('div');       // build wrapper and mark as self (message DOM) to style it as the sender
+  msgWrapper.classList.add('message-wrapper', 'self');
 
-  if (reference && reference.label) {                    // gultige Referenz
-    const ref = createReferenceTag(reference);           //???: Dieses Tag dient als klickbarer Verweis zuruck ins 3D-Modell?
-    msgWrapper.appendChild(ref);                         // Referenz-Tag oberhalb der Nachricht
+  if (reference && reference.label) {                     // if reference exists, show chip (context link) to associate the message with a selection
+    const ref = createReferenceChip(reference);           // reuse builder to keep DOM consistent
+    msgWrapper.appendChild(ref);                          // place chip above the message (layout)
   }
 
   const chatMsgContainer = document.createElement('div');
   chatMsgContainer.classList.add('message');
-  chatMsgContainer.innerHTML = escapeHTML(text);         // Benutzertext sicher als HTML (maskiert Sonderzeichen)
+  chatMsgContainer.innerHTML = escapeHTML(text);          // escape user text before inserting (XSS protection)
 
   const chatMeta = document.createElement('div');
   chatMeta.classList.add('meta');
@@ -48,5 +47,5 @@ export function addMsgToDOM({ text, time, reference }) { // neue Nachricht in de
   msgWrapper.appendChild(chatMsgContainer);
   msgWrapper.appendChild(chatMeta);
   chatMessages.appendChild(msgWrapper);
-  chatMessages.scrollTop = chatMessages.scrollHeight;   // Scrollt die Chatliste ans Ende
+  chatMessages.scrollTop = chatMessages.scrollHeight;   // auto-scroll to newest message (auto-scroll)
 }
