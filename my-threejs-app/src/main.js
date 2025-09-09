@@ -1,38 +1,37 @@
-import * as THREE from "three";
-import { setReference as setChatReference } from "./chat.js"; // Kopplung 3D-Selektion ��' Chat
-import { setupMarkerOverlay, renderMarkerForSelection } from "./marker.js";
+import { setComposerReference } from "./chat.js"; // links 3D selection to chat actions
+import { renderMarkerForSelection, setupMarkerOverlay } from "./marker.js";
 import { applySelectionHighlight, setupRaycastSelection } from "./raycaster.js";
 import { loadFragmentsFromPath } from "./utils.js";
 import { createViewerEngine } from "./viewer.js";
 
 const viewerContainer = document.getElementById("three-canvas");
 
-// Core logic
+// creates viewer engine and scene 
 const { engineComponents, world, fragments } = await createViewerEngine(viewerContainer);
 
-window.applyChatSelectionHighlight = sel => applySelectionHighlight(engineComponents, sel); // Re-highlights im 3D
+window.applyChatSelectionHighlight = sel => applySelectionHighlight(engineComponents, sel); // re-applies selection highlight in 3D scene to reflect chat clicks in 3D
 
-async function fitCameraToSelectionBox(world, selection) { // extract camera focusing logic
-  const controls = world.camera.controls;              // access controls once
-  if (selection.box) {                                 // use box to center/zoom when available
-    await controls.fitToBox(selection.box, true);      // Objekt per Box3 zentrieren/zoomen delegate to controls
-    return;                                            // done when box is available
+async function fitCameraToSelectionBox(world, selection) { // focuses camera on the selected area
+  const controls = world.camera.controls;                  // use camera controls once
+  if (selection.box) {                                     // if bounding box exists, frame it (Box3)
+    await controls.fitToBox(selection.box, true);          // center and zoom to the box
+    return;
   }
 }
 
-// Event handlers
+// handles a resolved selection: highlight, chat, marker, camera
 async function applySelectionEffects(selection) {
   applySelectionHighlight(engineComponents, selection);
-  setChatReference({
+  setComposerReference({
     label: `Item ${selection.itemId}`, modelId: selection.modelId, itemId: selection.itemId,
   });
   await renderMarkerForSelection(engineComponents, world, selection);
-  await fitCameraToSelectionBox(world, selection); // delegate camera focusing
+  await fitCameraToSelectionBox(world, selection); // focus camera on selection
 }
 
 setupRaycastSelection(engineComponents, world, applySelectionEffects);
 
-// Initialization
+// loads fragments and prepares marker overlay (initialization)
 await loadFragmentsFromPath(fragments);
 
 setupMarkerOverlay(engineComponents);

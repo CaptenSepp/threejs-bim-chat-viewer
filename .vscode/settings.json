@@ -1,0 +1,5 @@
+{
+  // Disable Auto Type Acquisition to stop fetching random @types
+  "typescript.disableAutomaticTypeAcquisition": true
+}
+
