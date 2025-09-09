@@ -39,9 +39,9 @@ describe('raycaster setupRaycastSelection', () => {
 
     // fake canvas that collects event handlers to trigger the click handler manually
     const canvas = {
-      handlers: {},
-      addEventListener: vi.fn((event, handler) => {
-        canvas.handlers[event] = handler;
+      handlers: {}, // Add handlers bucket to store event callbacks
+      addEventListener: vi.fn((event, handler) => { // Fake addEventListener to save the handler instead of real DOM (mock)
+        canvas.handlers[event] = handler; // Store the handler by event name (e.g., 'click')
       })
     };
 
@@ -49,7 +49,7 @@ describe('raycaster setupRaycastSelection', () => {
     const world = { renderer: { three: { domElement: canvas } } };
 
     // raycast result returned by the mocked raycaster (hit)
-    const rayHit = { fragments: { modelId: 'model1' }, localId: 7 };
+    const rayHit = { fragments: { modelId: 'model1' }, localId: 7 }; // Define a fake rayHit with modelId and localId (test data)
     const raycaster = {
       mouse: { updateMouseInfo: vi.fn() },
       castRay: vi.fn().mockResolvedValue(rayHit)
