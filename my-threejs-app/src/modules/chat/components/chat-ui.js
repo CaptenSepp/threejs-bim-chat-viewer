@@ -1,4 +1,4 @@
-import { escapeHTML } from "./utils.js";
+import { escapeHTML } from "../engine/utils.js";
 
 export const chatMessages = document.getElementById('chat-messages');
 export const inputForm = document.getElementById('input-form');
@@ -49,3 +49,4 @@ export function appendMessageToChat({ text, time, reference }) { // renders a me
   chatMessages.appendChild(msgWrapper);
   chatMessages.scrollTop = chatMessages.scrollHeight;   // auto-scroll to newest message (auto-scroll)
 }
+

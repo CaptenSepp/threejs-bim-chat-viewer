@@ -1,7 +1,7 @@
 import { FragmentsManager, Raycasters } from "@thatopen/components";
 import * as FRAGS from "@thatopen/fragments";
 import * as THREE from "three";
-import { removeActiveMarker } from "./marker.js";
+import { removeActiveMarker } from "./feature/selection/marker.js";
 
 
 const cssPrimaryColor = (typeof document !== "undefined" && typeof getComputedStyle === "function")

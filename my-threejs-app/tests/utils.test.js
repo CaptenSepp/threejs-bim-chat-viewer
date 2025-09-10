@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createWorkerObjectUrl, loadFragmentsFromPath } from '../src/utils.js';
+import { createWorkerObjectUrl, loadFragmentsFromPath } from '../src/core/utils.js';
 
 // stores original globals to restore later to avoid polluting other tests
 const originalFetch = global.fetch;

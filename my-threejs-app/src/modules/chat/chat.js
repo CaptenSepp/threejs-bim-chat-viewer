@@ -1,6 +1,6 @@
-import { appendMessageToChat, inputForm, inputField, referenceContainer, referenceLabel, clearReferenceBtn } from "./chat-ui.js";
+import { appendMessageToChat, inputForm, inputField, referenceContainer, referenceLabel, clearReferenceBtn } from "./components/chat-ui.js";
 // Import clearer-named helper to call /api/chat (easier to understand for beginners)
-import { requestAssistantReplyForUserMessage } from "./request-assistant-reply-api.js"; // Use descriptive function name
+import { requestAssistantReplyForUserMessage } from "./api/request-assistant-reply-api.js"; // Use descriptive function name
 
 const STORAGE_KEY = 'chat-history';
 

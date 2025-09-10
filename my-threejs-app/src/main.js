@@ -1,8 +1,8 @@
 import { setComposerReference } from "./chat.js"; // links 3D selection to chat actions
-import { renderMarkerForSelection, setupMarkerOverlay } from "./marker.js";
+import { renderMarkerForSelection, setupMarkerOverlay } from "./modules/target/marker.js";
 import { applySelectionHighlight, setupRaycastSelection } from "./raycaster.js";
-import { loadFragmentsFromPath } from "./utils.js";
-import { createViewerEngine } from "./viewer.js";
+import { loadFragmentsFromPath } from "./core/utils.js";
+import { createViewerEngine } from "./core/viewer.js";
 
 const viewerContainer = document.getElementById("three-canvas");
 
