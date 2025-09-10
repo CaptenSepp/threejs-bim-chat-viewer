@@ -1,6 +1,6 @@
 import { appendMessageToChat, inputForm, inputField, referenceContainer, referenceLabel, clearReferenceBtn } from "./chat-ui.js";
-// NEW: Import client helper to call /api/chat
-import { sendChat } from "./chat-api.js";
+// Import clearer-named helper to call /api/chat (easier to understand for beginners)
+import { requestAssistantReplyForUserMessage } from "./request-assistant-reply-api.js"; // Use descriptive function name
 
 const STORAGE_KEY = 'chat-history';
 
@@ -31,6 +31,7 @@ inputField.addEventListener('keydown', e => { // send on Enter
   }
 });
 
+// Make the submit handler async so we can await the server reply (async/await)
 inputForm.addEventListener('submit', async e => { // collect message and append to UI to render the message
   e.preventDefault();
   const text = inputField.value.trim();
@@ -45,18 +46,22 @@ inputForm.addEventListener('submit', async e => { // collect message and append 
   inputField.focus();
   clearComposerReference();
 
-  // NEW: Call local chat API and append assistant reply
-  try {
-    const reply = await sendChat({ text, history: messageHistory, reference: message.reference });
-    const aiMessage = { time: Date.now(), reference: null, text: reply || '...' };
-    messageHistory.push(aiMessage);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory));
-    appendMessageToChat(aiMessage);
-  } catch (err) {
-    const errMsg = { time: Date.now(), reference: null, text: `Fehler: ${(err && err.message) || 'Unbekannt'}` };
-    messageHistory.push(errMsg);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory));
-    appendMessageToChat(errMsg);
+  // Call local chat API and append assistant reply (What: talk to our /api/chat so AI can answer)
+  try { // Try block to catch any network or server errors (error handling)
+    const assistantReplyText = await requestAssistantReplyForUserMessage({ // Ask server for AI reply using explicit names
+      userMessageText: text, // The text the user just typed
+      previousChatHistory: messageHistory, // Pass current chat history for context
+      selectedModelReference: message.reference // Optional 3D selection reference
+    });
+    const assistantMessage = { time: Date.now(), reference: null, text: assistantReplyText || '...' }; // Build assistant message (fallback '...')
+    messageHistory.push(assistantMessage); // Save assistant message to in-memory array
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist updated chat with the AI reply
+    appendMessageToChat(assistantMessage); // Show the AI answer in the chat UI
+  } catch (err) { // If anything fails, show a readable error message (catch)
+    const errMsg = { time: Date.now(), reference: null, text: `Fehler: ${(err && err.message) || 'Unbekannt'}` }; // Create an error message to display (UX)
+    messageHistory.push(errMsg); // Store the error message in history (state)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist the error in localStorage (persistence)
+    appendMessageToChat(errMsg); // Show the error in the chat so the user knows (feedback)
   }
 });
 

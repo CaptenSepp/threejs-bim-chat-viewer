@@ -2,8 +2,8 @@
 
 let setReference, clearReference;
 
-beforeEach(async () => {                               // sets up a minimal DOM for tests (DOM fixture) NEW: to simulate browser environment
-  // element IDs match chat-ui.js (DOM contract) NEW: to match query selectors used by the code
+beforeEach(async () => {                               // sets up a minimal DOM for tests (DOM fixture) to simulate browser environment
+  // element IDs match chat-ui.js (DOM contract) to match query selectors used by the code
   // runs before each test to reset state (test lifecycle)
   const store = {};
   global.localStorage = {
@@ -28,7 +28,7 @@ beforeEach(async () => {                               // sets up a minimal DOM 
     <span id="chat-reference-label"></span>
     <button id="clear-reference-btn"></button>
   `;
-  const mod = await import('../src/chat.js');        // dynamically import chat module (dynamic import) NEW: to bind to DOM elements created above
+  const mod = await import('../src/chat.js');        // dynamically import chat module (dynamic import) to bind to DOM elements created above
   setReference = mod.setReference;                   // get API export (named export)
   clearReference = mod.clearReference;
 });
