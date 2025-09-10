@@ -8,6 +8,7 @@
     "test:watch": "vitest --watch"
   },
   "dependencies": {
+    "groq-sdk": "^0.6.0",
     "@thatopen/components": "^3.1.2",
     "@thatopen/components-front": "^3.1.6",
     "@thatopen/fragments": "^3.1.6",

@@ -1,4 +1,6 @@
 import { appendMessageToChat, inputForm, inputField, referenceContainer, referenceLabel, clearReferenceBtn } from "./chat-ui.js";
+// Client helper to call local /api/chat
+import { sendChat } from "./chat-api.js";
 
 const STORAGE_KEY = 'chat-history';
 
@@ -29,7 +31,7 @@ inputField.addEventListener('keydown', e => { // send on Enter
   }
 });
 
-inputForm.addEventListener('submit', e => { // collect message and append to UI to render the message
+inputForm.addEventListener('submit', async e => { // collect message and append to UI to render the message
   e.preventDefault();
   const text = inputField.value.trim();
   if (!text) return;
@@ -42,6 +44,20 @@ inputForm.addEventListener('submit', e => { // collect message and append to UI 
   inputField.value = '';
   inputField.focus();
   clearComposerReference();
+
+  // Call local chat API and append assistant reply
+  try {
+    const reply = await sendChat({ text, history: messageHistory, reference: message.reference });
+    const aiMessage = { time: Date.now(), reference: null, text: reply || '...' };
+    messageHistory.push(aiMessage);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory));
+    appendMessageToChat(aiMessage);
+  } catch (err) {
+    const errMsg = { time: Date.now(), reference: null, text: `Fehler: ${(err && err.message) || 'Unbekannt'}` };
+    messageHistory.push(errMsg);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory));
+    appendMessageToChat(errMsg);
+  }
 });
 
 // render saved chat history
