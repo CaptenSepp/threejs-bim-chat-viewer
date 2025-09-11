@@ -1,6 +1,6 @@
 import * as TOC from "@thatopen/components"; // core engine classes (components)
 import * as TOF from "@thatopen/components-front";
-import { createWorkerObjectUrl } from "../utils.js";
+import { createWorkerObjectUrl } from "./utils.js";
 
 // sets up the 3D viewer and engine (initialization)
 export async function createViewerEngine(viewerContainer) {
