@@ -1,6 +1,6 @@
 import { appendMessageToChat, inputForm, inputField, referenceContainer, referenceLabel, clearReferenceBtn } from "./components/chat-ui.js";
 // Import clearer-named helper to call /api/chat (easier to understand for beginners)
-import { requestAssistantReplyForUserMessage } from "./api/request-assistant-reply-api.js"; // Use descriptive function name
+import { requestAssistantReplyForUserMessage } from "../../api/request-assistant-reply-api.js"; // Use descriptive function name
 
 const STORAGE_KEY = 'chat-history';
 
@@ -62,8 +62,10 @@ inputForm.addEventListener('submit', async e => { // collect message and append 
     messageHistory.push(errMsg); // Store the error message in history (state)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist the error in localStorage (persistence)
     appendMessageToChat(errMsg); // Show the error in the chat so the user knows (feedback)
+    displayUserVisibleErrorSnackbar(errMsg.text);
   }
 });
 
 // render saved chat history
+import { displayUserVisibleErrorSnackbar } from "../../ui/error-notify.js";
 messageHistory.forEach(appendMessageToChat);
