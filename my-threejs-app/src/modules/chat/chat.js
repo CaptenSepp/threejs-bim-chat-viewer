@@ -37,10 +37,10 @@ inputForm.addEventListener('submit', async e => { // collect message and append 
   const text = inputField.value.trim();
   if (!text) return;
 
-  const message = { time: Date.now(), reference: currentReference, text }; // compose message object (payload) to store what we need
-  messageHistory.push(message);
+  const userMessage = { time: Date.now(), reference: currentReference, text, sender: 'user' }; // compose message object (payload) to store what we need for explicit user message object
+  messageHistory.push(userMessage);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // persist to local storage to restore chat after reload
-  appendMessageToChat(message);
+  appendMessageToChat(userMessage); // render user message
 
   inputField.value = '';
   inputField.focus();
@@ -51,14 +51,14 @@ inputForm.addEventListener('submit', async e => { // collect message and append 
     const assistantReplyText = await requestAssistantReplyForUserMessage({ // Ask server for AI reply using explicit names
       userMessageText: text, // The text the user just typed
       previousChatHistory: messageHistory, // Pass current chat history for context
-      selectedModelReference: message.reference // Optional 3D selection reference
+      selectedModelReference: userMessage.reference // Optional 3D selection pass the user message reference
     });
-    const assistantMessage = { time: Date.now(), reference: null, text: assistantReplyText || '...' }; // Build assistant message (fallback '...')
+    const assistantMessage = { time: Date.now(), reference: null, text: assistantReplyText || '...', sender: 'assistant' }; // Build assistant message (fallback '...') mark as assistant/system side
     messageHistory.push(assistantMessage); // Save assistant message to in-memory array
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist updated chat with the AI reply
     appendMessageToChat(assistantMessage); // Show the AI answer in the chat UI
   } catch (err) { // If anything fails, show a readable error message (catch)
-    const errMsg = { time: Date.now(), reference: null, text: `Fehler: ${(err && err.message) || 'Unbekannt'}` }; // Create an error message to display (UX)
+    const errMsg = { time: Date.now(), reference: null, text: `Fehler: ${(err && err.message) || 'Unbekannt'}`, sender: 'system' }; // Create an error message to display (UX) mark as system error message (left, grey)
     messageHistory.push(errMsg); // Store the error message in history (state)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist the error in localStorage (persistence)
     appendMessageToChat(errMsg); // Show the error in the chat so the user knows (feedback)

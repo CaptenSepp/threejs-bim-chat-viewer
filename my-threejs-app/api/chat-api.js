@@ -2,7 +2,7 @@
 export default async function handleChatCompletionRequest(req, res) {                // handles POST chat requests (HTTP) to process user messages
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' }); // enforce POST-only (method check) to avoid accidental GETs
   try {
-    const requestBodyJson = await readRequestJsonBody(req);               // read JSON request body (payload) to access incoming fields
+    const requestBodyJson = await readRequestJsonBody(req);               // read JSON request body (payload/userData) to access incoming fields/Objekt, z. B. { message: "Hallo" }
     const userMessageText = (requestBodyJson?.message ?? '').toString().trim(); // normalize message text to ensure a clean string
     if (!userMessageText) return sendJson(res, 400, { error: 'Missing message' }); // require message to reject empty input
     const openAiApiKey = process.env.OPENAI_API_KEY;                      // read API key from environment (secret) to avoid hardcoding credentials
