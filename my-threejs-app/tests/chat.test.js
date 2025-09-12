@@ -53,3 +53,4 @@ describe('chat references', () => {
   });
 }); 
 
+// @ts-check

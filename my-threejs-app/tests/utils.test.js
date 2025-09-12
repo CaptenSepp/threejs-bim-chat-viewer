@@ -1,3 +1,4 @@
+// @ts-check
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createWorkerObjectUrl, loadFragmentsFromPath } from '../src/core/utils.js';
 

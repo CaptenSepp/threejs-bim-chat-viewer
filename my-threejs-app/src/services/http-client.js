@@ -29,3 +29,4 @@ export async function postJson(url, body, { headers = {}, signal } = {}) { // pe
   });
   return handleJson(res, 'POST fehlgeschlagen');                         // parse or show snackbar on error
 }
+// @ts-check

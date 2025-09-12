@@ -69,3 +69,4 @@ describe('raycaster setupRaycastSelection', () => {
     expect(handleRaycastSelection).toHaveBeenCalledWith({ modelId: 'model1', itemId: 7 });
   });
 }); 
+// @ts-check

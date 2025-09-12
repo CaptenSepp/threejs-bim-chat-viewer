@@ -1,3 +1,4 @@
+// @ts-check
 async function fetchOrThrow(resource, errorPrefix) {  // fetches a resource and throws on HTTP error
   const res = await fetch(resource);
   if (!res.ok) {

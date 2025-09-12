@@ -51,3 +51,4 @@ export function appendMessageToChat({ text, time, reference, sender }) { // rend
   chatMessages.appendChild(msgWrapper);
   chatMessages.scrollTop = chatMessages.scrollHeight;   // auto-scroll to newest message (auto-scroll)
 }
+// @ts-check

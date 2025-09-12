@@ -21,3 +21,4 @@ export function displayUserErrorSnackbar(messageText = 'Ein Fehler ist aufgetret
 }
 
 export { displayUserErrorSnackbar as displayUserErrorSnackbar };
+// @ts-check

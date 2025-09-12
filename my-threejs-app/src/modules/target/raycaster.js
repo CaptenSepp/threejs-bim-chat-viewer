@@ -64,3 +64,4 @@ export function applySelHighlight(components, selection) {
   fragMan.highlight(SELECTION_HIGHLIGHT_STYLE, withMouseSelected);
   fragMan.core?.update(true);                   // force an immediate render update
 } 
+// @ts-check

@@ -69,3 +69,4 @@ inputForm.addEventListener('submit', async e => { // collect message and append 
 // render saved chat history
 import { displayUserErrorSnackbar } from "../../ui/error-notify.js";
 messageHistory.forEach(appendMessageToChat);
+// @ts-check

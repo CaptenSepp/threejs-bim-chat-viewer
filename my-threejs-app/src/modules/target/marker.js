@@ -47,3 +47,4 @@ export function removeActiveMarker() {                                   // remo
     activeMarkerInstId = null;                                           // clear the handle
   }
 }
+// @ts-check

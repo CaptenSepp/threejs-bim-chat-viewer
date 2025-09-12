@@ -49,3 +49,4 @@ export async function createViewerEngine(viewerContainer) {
 
   return { engineComponents, world, fragments };
 }
+// @ts-check
