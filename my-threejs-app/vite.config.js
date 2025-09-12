@@ -1,5 +1,5 @@
 // Import minimal chat proxy for dev API (Why: we add a small plugin that gives us /api/chat during development)
-import ChatProxyPlugin from './vite.chat-proxy.simple.js'; // Bring in our simple plugin file (module import)
+import ChatProxyPlugin from './tools/vite.chat-proxy.simple.js';
 
 export default {
   assetsInclude: ['**/*.ifc', '**/*.wasm'],
@@ -9,5 +9,5 @@ export default {
     globals: true
   },
   // Register /api/chat dev endpoint (What: enable the plugin so the route exists while vite runs)
-  plugins: [ChatProxyPlugin()] // Activate the plugin by calling it (plugin array)
+  plugins: [ChatProxyPlugin()] // Activate the plugin by calling it
 };
