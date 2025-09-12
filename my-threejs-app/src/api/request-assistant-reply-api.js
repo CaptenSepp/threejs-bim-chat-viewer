@@ -1,12 +1,12 @@
-/**
- * Request an assistant reply for a user message
- * @param {{ userMessageText: string, previousChatHistory?: Array<any>, selectedModelReference?: any }} params
- * @returns {Promise<string>} assistant reply plain text answer from AI
- */
+
+//Request an assistant reply for a user message
+//Input: object with userMessageText (string), previousChatHistory (array, optional), selectedModelReference (any, optional)
+//Output: Promise that resolves to assistant reply text (string)
+
 export async function requestAssistantReplyForUserMessage({ userMessageText, previousChatHistory = [], selectedModelReference = null }) {
-  // NEW: use shared client helper for JSON POST (standard headers, error handling, snackbar)
+  // use shared client helper for JSON POST (standard headers, error handling, snackbar)
   const { postJson } = await import('../services/http-client.js');
-  const data = await postJson('/api/chat', {                            // Send request to our API endpoint (dev proxy or prod function)
+  const data = await postJson('/api/assistant-reply', {                 // Send request to our API endpoint (dev proxy or prod function)
     message: userMessageText,                                           // The actual text the user typed
     history: previousChatHistory,                                       // short history of the chat
     reference: selectedModelReference                                   // 3D selection reference to a selected model item

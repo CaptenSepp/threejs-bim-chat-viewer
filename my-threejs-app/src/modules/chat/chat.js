@@ -62,10 +62,10 @@ inputForm.addEventListener('submit', async e => { // collect message and append 
     messageHistory.push(errMsg); // Store the error message in history (state)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist the error in localStorage (persistence)
     appendMessageToChat(errMsg); // Show the error in the chat so the user knows (feedback)
-    displayUserVisibleErrorSnackbar(errMsg.text);
+    displayUserErrorSnackbar(errMsg.text);
   }
 });
 
 // render saved chat history
-import { displayUserVisibleErrorSnackbar } from "../../ui/error-notify.js";
+import { displayUserErrorSnackbar } from "../../ui/error-notify.js";
 messageHistory.forEach(appendMessageToChat);

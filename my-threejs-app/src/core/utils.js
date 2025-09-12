@@ -13,19 +13,19 @@ export async function createWorkerObjectUrl(url) {
     const workerFile = new File([workerBlob], "worker.mjs", { type: "text/javascript" });
     return URL.createObjectURL(workerFile);
   } catch (error) {
-    displayUserVisibleErrorSnackbar(`Worker konnte nicht geladen werden: ${url}`); // show a short snackbar in UI
+    displayUserErrorSnackbar(`Worker konnte nicht geladen werden: ${url}`); // show a short snackbar in UI
     throw new Error(`Error loading worker from ${url}: ${error.message}`);
   }
 }
 
-export async function loadFragmentsFromPath(fragments, path = "/fragments/school_str.frag") { // loads a fragment model from a .frag file
+export async function loadFragmentsFromPath(fragments, path = "/fragments/custom_psets.frag") { // /fragments/school_str.frag
   try {
     const file = await fetchOrThrow(path, 'Failed to fetch fragments at');
     const buffer = await file.arrayBuffer();
     await fragments.core.load(buffer, { modelId: "school_str" }); // register model with a fixed identifier (modelId) to reference it later
   } catch (error) {
     console.error(`Error loading fragments from ${path}:`, error);
-    displayUserVisibleErrorSnackbar(`Model konnte nicht geladen werden: ${path}`); // show a short snackbar in UI
+    displayUserErrorSnackbar(`Model konnte nicht geladen werden: ${path}`); // show a short snackbar in UI
   }
 }
 
@@ -39,5 +39,5 @@ export function escapeHTML(str) { // replaces special characters with HTML-safe 
     "'": '&#039;',
   }[m]));
 }
-import { displayUserVisibleErrorSnackbar } from "../ui/error-notify.js";
+import { displayUserErrorSnackbar } from "../ui/error-notify.js";
 

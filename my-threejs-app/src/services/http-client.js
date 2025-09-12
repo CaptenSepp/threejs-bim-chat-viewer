@@ -1,15 +1,15 @@
-// NEW: Minimal browser-side HTTP helper for JSON requests               // centralizes fetch behavior (headers, JSON, error UI)
-import { displayUserVisibleErrorSnackbar } from '../ui/error-notify.js'; // shows a small snackbar on request errors (UI feedback)
+// Minimal browser-side HTTP helper for JSON requests                    // centralizes fetch behavior (headers, JSON, error UI)
+import { displayUserErrorSnackbar } from '../ui/error-notify.js';        // shows a small snackbar on request errors (UI feedback)
 
 async function readTextSafely(res) {                                     // safely read text from a Response without throwing
-  try { return await res.text(); } catch { return ''; }                   // fallback to empty string if body cannot be read
+  try { return await res.text(); } catch { return ''; }                  // fallback to empty string if body cannot be read
 }
 
 async function handleJson(res, onErrorPrefix = 'Fehler bei Anfrage') {   // parse JSON and surface HTTP errors consistently
   if (!res.ok) {                                                         // non-2xx → treat as error
     const text = await readTextSafely(res);                              // try to get error text from server
     const msg = text || `${onErrorPrefix}: HTTP ${res.status}`;          // build readable message (fallback to status)
-    displayUserVisibleErrorSnackbar(msg);                                // inform user in-app (snackbar)
+    displayUserErrorSnackbar(msg);                                       // inform user in-app (snackbar)
     throw new Error(msg);                                                // propagate to caller for additional handling
   }
   return res.json();                                                     // success path: decode JSON payload
