@@ -1,3 +1,4 @@
+// @ts-check
 import { escapeHTML } from "../../../core/utils.js";
 
 export const chatMessages = document.getElementById('chat-messages');
@@ -51,4 +52,3 @@ export function appendMessageToChat({ text, time, reference, sender }) { // rend
   chatMessages.appendChild(msgWrapper);
   chatMessages.scrollTop = chatMessages.scrollHeight;   // auto-scroll to newest message (auto-scroll)
 }
-// @ts-check
