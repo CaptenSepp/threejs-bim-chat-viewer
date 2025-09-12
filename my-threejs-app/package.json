@@ -16,6 +16,10 @@
     "web-ifc": "^0.0.70"
   },
   "devDependencies": {
+    "@types/connect": "^3.4.38",
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^24.3.2",
+    "@types/three": "^0.180.0",
     "jsdom": "^26.1.0",
     "vite": "^6.3.5",
     "vitest": "^3.2.4"
