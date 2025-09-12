@@ -1,4 +1,4 @@
-import { escapeHTML } from "./utils.js";
+import { escapeHTML } from "../../../core/utils.js";
 
 export const chatMessages = document.getElementById('chat-messages');
 export const inputForm = document.getElementById('input-form');
@@ -24,9 +24,11 @@ function createReferenceChip(reference) {    // creates a clickable chip that ju
   return clickableRefTag;
 }
 
-export function appendMessageToChat({ text, time, reference }) { // renders a message in the chat (DOM update)
+export function appendMessageToChat({ text, time, reference, sender }) { // renders a message in the chat (DOM update)
   const msgWrapper = document.createElement('div');       // build wrapper and mark as self (message DOM) to style it as the sender
-  msgWrapper.classList.add('message-wrapper', 'self');
+  const isSelf = sender ? sender === 'user' : true;       // decide side based on sender (default user/self for backwards-compat)
+  msgWrapper.classList.add('message-wrapper');
+  if (isSelf) msgWrapper.classList.add('self');           // only user messages get the 'self' style (orange, right)
 
   if (reference && reference.label) {                     // if reference exists, show chip (context link) to associate the message with a selection
     const ref = createReferenceChip(reference);           // reuse builder to keep DOM consistent

@@ -16,7 +16,7 @@ export const SELECTION_HIGHLIGHT_STYLE = {
   transparent: true,
 };
 
-async function buildSelectionFromRayHit(engineComponents, rayHit) { // builds selection info from a ray hit
+async function buildSelFromRayHit(engineComponents, rayHit) { // builds selection info from a ray hit
   const modelId = rayHit.fragments.modelId;                 // read model identifier (model id)
   const itemId = rayHit.localId;                            // item identifier (local id)
   let selection = { modelId, itemId };                      // minimal selection payload(data package) (fallback(backup/default)) to keep working when fragments API is unavailable, when there is no more data coming
@@ -33,7 +33,7 @@ async function buildSelectionFromRayHit(engineComponents, rayHit) { // builds se
   return selection;                                         // return minimal or enriched selection
 }
 
-export function setupRaycastSelection(engineComponents, world, applySelectionEffects) { // sets up click raycasting and selection handling
+export function setupRaycastSel(engineComponents, world, applySelectionEffects) { // sets up click raycasting and selection handling
   const raycaster = engineComponents.get(Raycasters).get(world); // get raycaster for this spesific world to connect to the mouse
   const canvas = world.renderer.three.domElement;                // canvas we attach events to (canvas element) to receive mouse events (listener)
 
@@ -42,7 +42,7 @@ export function setupRaycastSelection(engineComponents, world, applySelectionEff
     const rayHit = await raycaster.castRay();   // cast a ray and wait for a hit
 
     if (rayHit) {
-      const selection = await buildSelectionFromRayHit(engineComponents, rayHit); // build selection data from the hit to include ids and bBox
+      const selection = await buildSelFromRayHit(engineComponents, rayHit); // build selection data from the hit to include ids and bBox
       applySelectionEffects(selection);      // hand selection to caller for effects (callback)
       return;
     }
@@ -57,7 +57,7 @@ export function setupRaycastSelection(engineComponents, world, applySelectionEff
   });
 }
 
-export function applySelectionHighlight(components, selection) {
+export function applySelHighlight(components, selection) {
   const withMouseSelected = { [selection.modelId]: [selection.itemId] };
   const fragMan = components.get(FragmentsManager);
   fragMan.resetHighlight();                     // clear previous highlight

@@ -44,7 +44,7 @@ export async function createViewerEngine(viewerContainer) {
     });
   }
   document.addEventListener("visibilitychange", () => {  // pause/resume on tab visibility changes to save resources when hidden
-    isRendering = !document.hidden;                     
+    isRendering = !document.hidden;
   });
 
   return { engineComponents, world, fragments };
