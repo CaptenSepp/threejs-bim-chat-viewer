@@ -1,3 +1,4 @@
+// @ts-check
 import * as TOC from "@thatopen/components"; // core engine classes (components)
 import * as TOF from "@thatopen/components-front";
 import { createWorkerObjectUrl } from "./utils.js";
@@ -9,9 +10,10 @@ export async function createViewerEngine(viewerContainer) {
   // create world and scene
   const worlds = engineComponents.get(TOC.Worlds);
   const world = worlds.create();
-  world.scene = new TOC.SimpleScene(engineComponents);
-  world.scene.setup();
-  world.scene.three.background = null;                   // transparent background (no color)
+  const simpleScene = /** @type {import('@thatopen/components').SimpleScene} */ (new TOC.SimpleScene(engineComponents));
+  world.scene = simpleScene;
+  simpleScene.setup();
+  (/** @type {import('three').Scene} */(world.scene.three)).background = null;                   // transparent background (no color)
 
   // renderer and camera setup
   world.renderer = new TOF.PostproductionRenderer(engineComponents, viewerContainer);
@@ -29,9 +31,9 @@ export async function createViewerEngine(viewerContainer) {
   fragments.init(workerObjectUrl);                      // boot fragments with the worker (init)
 
   // keep fragments up-to-date with camera/scene changes
-  world.camera.controls.addEventListener("change", () => fragments.core.update(true)); // recompute on camera move
+  (/** @type {{ addEventListener(type: 'change' | 'update', listener: (e: unknown) => void): void }} */ (world.camera.controls)).addEventListener("change", () => fragments.core.update(true)); // recompute on camera move
   fragments.list.onItemSet.add(({ value: model }) => {  // when a fragment model loads, attach it
-    model.useCamera(world.camera.three);                // link model shaders to camera (camera binding) to ensure correct uniforms
+    model.useCamera(/** @type {import('three').PerspectiveCamera | import('three').OrthographicCamera} */(world.camera.three));                // link model shaders to camera (camera binding) to ensure correct uniforms
     world.scene.three.add(model.object);                // add model to scene graph to render it
     fragments.core.update(true);                        // force a render update
   });

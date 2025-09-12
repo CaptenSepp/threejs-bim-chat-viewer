@@ -30,3 +30,4 @@ convertIfcToFrag().catch((err) => {                                      // Erro
   console.error('Conversion failed:', err);                              // Log full error object (stack/message)
   process.exit(1);                                                       // exit code (conventional CLI failure)
 });
+// @ts-check

@@ -13,3 +13,4 @@ export async function requestAssistantReplyForUserMessage({ userMessageText, pre
   });
   return data?.reply || '';                                             // Return assistant reply text or empty string if missing to keep UI stable when reply is absent
 }
+// @ts-check

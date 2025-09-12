@@ -1,3 +1,4 @@
+// @ts-check
 // Minimal browser-side HTTP helper for JSON requests                    // centralizes fetch behavior (headers, JSON, error UI)
 import { displayUserErrorSnackbar } from '../ui/error-notify.js';        // shows a small snackbar on request errors (UI feedback)
 
@@ -15,11 +16,20 @@ async function handleJson(res, onErrorPrefix = 'Fehler bei Anfrage') {   // pars
   return res.json();                                                     // success path: decode JSON payload
 }
 
+/**
+ * @param {string} url
+ * @param {{ headers?: Record<string, string>, signal?: AbortSignal }} [options]
+ */
 export async function getJson(url, { headers = {}, signal } = {}) {      // perform a GET request expecting a JSON response
   const res = await fetch(url, { method: 'GET', headers, signal });      // fire GET with optional headers/AbortSignal
   return handleJson(res, 'GET fehlgeschlagen');                          // parse or show snackbar on error
 }
 
+/**
+ * @param {string} url
+ * @param {any} body
+ * @param {{ headers?: Record<string, string>, signal?: AbortSignal }} [options]
+ */
 export async function postJson(url, body, { headers = {}, signal } = {}) { // perform a POST request with JSON body
   const res = await fetch(url, {                                         // send request using Fetch API (browser)
     method: 'POST',                                                      // HTTP verb

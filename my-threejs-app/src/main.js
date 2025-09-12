@@ -1,3 +1,4 @@
+// @ts-check
 import { loadFragmentsFromPath } from "./core/utils.js";
 import { createViewerEngine } from "./core/viewer.js";
 import { setComposerReference } from "./modules/chat/chat.js"; // links 3D selection to chat actions

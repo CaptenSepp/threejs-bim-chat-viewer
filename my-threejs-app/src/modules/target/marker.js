@@ -1,3 +1,4 @@
+// @ts-check
 import { FragmentsManager as EngineFragmentsManager } from "@thatopen/components"; // engine service to access fragment data (attributes API)
 import * as ThatOpenFront from "@thatopen/components-front";                       // front helpers (Marker overlay system)
 
@@ -7,7 +8,7 @@ let activeMarkerInstId;             // id/handle of the currently shown marker (
 
 export function setupMarker(engineComponents) {                                   // prepares HTML overlay (initialization)
   const markerTemplateElement = document.getElementById("marker-template");              // find the template in index.html
-  markerLabelElemTemp = markerTemplateElement.content.firstElementChild.cloneNode(true); // clone label element (detached DOM node)
+  markerLabelElemTemp = (/** @type {HTMLTemplateElement} */ (markerTemplateElement)).content.firstElementChild.cloneNode(true); // clone label element (detached DOM node)
   markerServInst = engineComponents.get(ThatOpenFront.Marker);                           // get Marker service
 }
 

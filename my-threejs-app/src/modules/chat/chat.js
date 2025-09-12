@@ -1,3 +1,4 @@
+// @ts-check
 import { appendMessageToChat, inputForm, inputField, referenceContainer, referenceLabel, clearReferenceBtn } from "./components/chat-ui.js";
 // Import clearer-named helper to call /api/chat (easier to understand for beginners)
 import { requestAssistantReplyForUserMessage } from "../../api/request-assistant-reply-api.js"; // Use descriptive function name
@@ -34,7 +35,7 @@ inputField.addEventListener('keydown', e => { // send on Enter
 // Make the submit handler async so we can await the server reply (async/await)
 inputForm.addEventListener('submit', async e => { // collect message and append to UI to render the message
   e.preventDefault();
-  const text = inputField.value.trim();
+  const text = (/** @type {HTMLInputElement} */ (inputField)).value.trim();
   if (!text) return;
 
   const userMessage = { time: Date.now(), reference: currentReference, text, sender: 'user' }; // compose message object (payload) to store what we need for explicit user message object
@@ -42,7 +43,7 @@ inputForm.addEventListener('submit', async e => { // collect message and append 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // persist to local storage to restore chat after reload
   appendMessageToChat(userMessage); // render user message
 
-  inputField.value = '';
+  (/** @type {HTMLInputElement} */ (inputField)).value = '';
   inputField.focus();
   clearComposerReference();
 
