@@ -1,4 +1,4 @@
-// Import minimal chat proxy for dev API (Why: we add a small plugin that gives us /api/chat during development)
+// Import minimal chat proxy for dev API (we add a small plugin that gives us /api/chat-assisstant during development)
 import ChatProxyPlugin from './tools/vite.chat-proxy.js';
 
 export default {

@@ -15,5 +15,7 @@ yarn-error.log*
 Thumbs.db
 
 # Environment variables
+.env.*
 .env
+
 .vscode/extensions.json
