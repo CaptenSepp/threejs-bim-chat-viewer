@@ -26,10 +26,13 @@ async function init() {
   // handles a resolved selection: highlight, chat, marker, camera
   async function applySelEffects(sel) {
     applySelHighlight(engineComponents, sel);
+    const markerAttributes = await renderMarkerForSel(engineComponents, world, sel); // reuse marker data
     setComposerReference({
-      label: `Item ${sel.itemId}`, modelId: sel.modelId, itemId: sel.itemId,
+      label: `Item ${sel.itemId}`,
+      modelId: sel.modelId,
+      itemId: sel.itemId,
+      attributes: markerAttributes || null, // forward marker fields for chat
     });
-    await renderMarkerForSel(engineComponents, world, sel);
     // await fitCameraToSelectionBox(world, selection); // focus camera on selection for commented for later uses
   }
 

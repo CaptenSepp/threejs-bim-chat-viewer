@@ -68,14 +68,37 @@ function readRequestJsonBody(httpRequest) {                            // reads 
   });
 }
 
-function formatReferenceForPrompt(reference) { // distill up to five reference fields into prompt text
+function formatReferenceForPrompt(reference) { // include selection id plus marker attributes
   if (!reference || typeof reference !== 'object') return '';
-  const entries = Object.entries(reference)
-    .filter(([, value]) => value !== undefined && value !== null && value !== '')
-    .slice(0, 5)
-    .map(([key, value]) => key + ': ' + (typeof value === 'object' ? JSON.stringify(value) : String(value)));
-  if (entries.length === 0) return '';
-  return '\n\nReferenzdaten:\n' + entries.join('\n');
+  const lines = [];
+  const toText = value => {
+    if (value === undefined || value === null || value === '') return '';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  };
+  const appendLine = (label, value) => {
+    const textValue = toText(value);
+    if (textValue) lines.push(label + ': ' + textValue);
+  };
+  appendLine('Model ID', reference.modelId);
+  appendLine('Item ID', reference.itemId);
+  const attrs = reference.attributes;
+  if (attrs && typeof attrs === 'object') {
+    appendLine('Name', attrs.name ?? attrs.Name);
+    appendLine('Object Type', attrs.objectType ?? attrs.ObjectType);
+    appendLine('Tag', attrs.tag ?? attrs.Tag);
+    appendLine('Category', attrs.category ?? attrs._category);
+    appendLine('Local ID', attrs.localId ?? attrs._localId);
+  }
+  if (!lines.length) {
+    const fallback = Object.entries(reference)
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .slice(0, 5)
+      .map(([key, value]) => key + ': ' + (typeof value === 'object' ? JSON.stringify(value) : String(value)));
+    lines.push(...fallback);
+  }
+  if (!lines.length) return '';
+  return '\n\nReferenzdaten:\n' + lines.join('\n');
 }
 
 /**

@@ -23,11 +23,16 @@ export async function renderMarkerForSel(engineComponents, world, selection) {  
   const asPlainValue = (v) => (v && typeof v === "object" && "value" in v ? v.value : v);
 
   // fill overlay fields with attributes (debug-friendly names)
-  markerLabelElemTemp.querySelector(".val-name").textContent = asPlainValue(attrs.Name);
-  markerLabelElemTemp.querySelector(".val-objecttype").textContent = asPlainValue(attrs.ObjectType);
-  markerLabelElemTemp.querySelector(".val-tag").textContent = asPlainValue(attrs.Tag);
-  markerLabelElemTemp.querySelector(".val-category").textContent = asPlainValue(attrs._category);
-  markerLabelElemTemp.querySelector(".val-localid").textContent = asPlainValue(attrs._localId);
+  const markerName = asPlainValue(attrs.Name); // reuse marker data for prompt
+  const markerObjectType = asPlainValue(attrs.ObjectType);
+  const markerTag = asPlainValue(attrs.Tag);
+  const markerCategory = asPlainValue(attrs._category);
+  const markerLocalId = asPlainValue(attrs._localId);
+  markerLabelElemTemp.querySelector(".val-name").textContent = markerName;
+  markerLabelElemTemp.querySelector(".val-objecttype").textContent = markerObjectType;
+  markerLabelElemTemp.querySelector(".val-tag").textContent = markerTag;
+  markerLabelElemTemp.querySelector(".val-category").textContent = markerCategory;
+  markerLabelElemTemp.querySelector(".val-localid").textContent = markerLocalId;
 
   // place marker slightly above the selection (position = Vector3 in world space)
   const markerWorldPosition = selection.center.clone();                  // clone center (avoid mutating selection.center)
@@ -40,6 +45,13 @@ export async function renderMarkerForSel(engineComponents, world, selection) {  
     markerWorldPosition,
     true
   );
+  return {
+    name: markerName,
+    objectType: markerObjectType,
+    tag: markerTag,
+    category: markerCategory,
+    localId: markerLocalId,
+  }; // pass marker fields back for chat reference
 }
 
 export function removeActiveMarker() {                                   // removes marker if one exists (cleanup)
