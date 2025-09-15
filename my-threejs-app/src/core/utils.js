@@ -23,10 +23,10 @@ export async function loadFragmentsFromPath(fragments, path = "/fragments/custom
   try {
     const file = await fetchOrThrow(path, 'Failed to fetch fragments at');
     const buffer = await file.arrayBuffer();
-    const normalizedPath = path.replace(/\\/g, '/'); // NEW: normalize slashes for consistent model ids
-    const trimmedPath = normalizedPath.replace(/^\/+/, ''); // NEW: drop leading slashes to align with repo structure
-    let modelId = trimmedPath || 'model'; // NEW: derive a stable identifier from the fragment path
-    if (!modelId.startsWith('public/')) modelId = 'public/' + modelId; // NEW: ensure public/ prefix so chat sees actual asset path
+    const normalizedPath = path.replace(/\\/g, '/'); // normalize slashes for consistent model ids
+    const trimmedPath = normalizedPath.replace(/^\/+/, ''); // drop leading slashes to align with repo structure
+    let modelId = trimmedPath || 'model'; // derive a stable identifier from the fragment path
+    if (!modelId.startsWith('public/')) modelId = 'public/' + modelId; // ensure public/ prefix so chat sees actual asset path
     await fragments.core.load(buffer, { modelId }); // register model with derived identifier so selections report current file
   } catch (error) {
     console.error(`Error loading fragments from ${path}:`, error);

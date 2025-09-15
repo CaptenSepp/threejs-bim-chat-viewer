@@ -18,6 +18,9 @@ export default function createChatProxyPlugin() {                      // create
           
           /** @type {string} */
           const userMessageText = (requestBody?.message ?? '').toString().trim(); // normalize message text (string) from client, Pulls the “message” text from the body.If it’s missing, use an empty string.Make sure it’s a string, then remove extra spaces from start/end.
+          const referencePromptSuffix = formatReferenceForPrompt(requestBody?.reference); // include selected model reference details
+          const promptText = 'Antworte kurz.\n\n' + userMessageText + referencePromptSuffix; // extend prompt with reference data
+          console.log('[Gemini prompt]', promptText); // debug prompt preview
           if (!userMessageText) return sendJsonResponse(httpResponse, 400, { error: 'Missing message' }); // reject when client sends empty input
           const openAiApiKey = process.env.GOOGLE_API_KEY;             // read local dev API key from environment (never exposed to browser), Looks for your OpenAI API key in your dev machine's environment variables
           if (!openAiApiKey) return sendJsonResponse(httpResponse, 500, { error: 'GOOGLE_API_KEY missing' }); // fail fast if key is not set locally
@@ -31,7 +34,7 @@ export default function createChatProxyPlugin() {                      // create
               },
               body: JSON.stringify({                                     // minimal request model and prompt
                 contents: [                                              // conversation messages
-                  { role: 'user', parts: [{ text: 'Antworte kurz auf Deutsch.\n\n' + userMessageText }] }, // system instruction
+                  { role: 'user', parts: [{ text: promptText }] }, // system instruction
                 ],
                 generationConfig: { temperature: 0.3, maxOutputTokens: 200 }, // cap output length 
               }),
@@ -63,6 +66,16 @@ function readRequestJsonBody(httpRequest) {                            // reads 
     });
     httpRequest.on('error', reject);                                   // bubble stream errors
   });
+}
+
+function formatReferenceForPrompt(reference) { // distill up to five reference fields into prompt text
+  if (!reference || typeof reference !== 'object') return '';
+  const entries = Object.entries(reference)
+    .filter(([, value]) => value !== undefined && value !== null && value !== '')
+    .slice(0, 5)
+    .map(([key, value]) => key + ': ' + (typeof value === 'object' ? JSON.stringify(value) : String(value)));
+  if (entries.length === 0) return '';
+  return '\n\nReferenzdaten:\n' + entries.join('\n');
 }
 
 /**
