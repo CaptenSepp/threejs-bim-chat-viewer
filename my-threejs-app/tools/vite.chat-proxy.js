@@ -19,27 +19,23 @@ export default function createChatProxyPlugin() {                      // create
           /** @type {string} */
           const userMessageText = (requestBody?.message ?? '').toString().trim(); // normalize message text (string) from client, Pulls the “message” text from the body.If it’s missing, use an empty string.Make sure it’s a string, then remove extra spaces from start/end.
           if (!userMessageText) return sendJsonResponse(httpResponse, 400, { error: 'Missing message' }); // reject when client sends empty input
-          const openAiApiKey = process.env.OPENAI_API_KEY;             // read local dev API key from environment (never exposed to browser), Looks for your OpenAI API key in your dev machine’s environment variables
-          if (!openAiApiKey) return sendJsonResponse(httpResponse, 500, { error: 'OPENAI_API_KEY missing' }); // fail fast if key is not set locally
-          const openAiHttpResponse = await fetch('https://api.openai.com/v1/chat/completions', { // call OpenAI upstream (Chat Completions), This is the “real” AI server.
+          const openAiApiKey = process.env.GOOGLE_API_KEY;             // read local dev API key from environment (never exposed to browser), Looks for your OpenAI API key in your dev machine's environment variables
+          if (!openAiApiKey) return sendJsonResponse(httpResponse, 500, { error: 'GOOGLE_API_KEY missing' }); // fail fast if key is not set locally
+          const openAiHttpResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + encodeURIComponent(openAiApiKey), { // call OpenAI upstream (Chat Completions), This is the "real" AI server.
             method: 'POST',                                            // HTTP POST to send a JSON body
             headers: {
-              Authorization: `Bearer ${openAiApiKey}`,                 // bearer token with local env key, proves to OpenAI who you are
-              'Content-Type': 'application/json',                      //  says “I’m sending JSON”
+              'Content-Type': 'application/json',                      //  says "I'm sending JSON"
             },
             body: JSON.stringify({                                     // minimal request model and prompt
-              model: 'gpt-4o-mini',                                    // selected model
-              messages: [                                              // conversation messages
-                { role: 'system', content: 'Antworte kurz auf Deutsch.' }, // system instruction
-                { role: 'user', content: userMessageText },            // user message (from client)
+              contents: [                                              // conversation messages
+                { role: 'user', parts: [{ text: 'Antworte kurz auf Deutsch.\n\n' + userMessageText }] }, // system instruction
               ],
-              temperature: 0.3,                                        // low randomness for consistent replies
-              max_tokens: 200,                                         // cap output length
+              generationConfig: { temperature: 0.3, maxOutputTokens: 200 }, // cap output length 
             }),
           });
           if (!openAiHttpResponse.ok) return sendJsonResponse(httpResponse, 502, { error: 'Upstream error' }); // propagate upstream failure (bad gateway)
           const openAiResponseJson = await openAiHttpResponse.json();    // parse/read upstream/response JSON
-          const assistantReplyText = openAiResponseJson?.choices?.[0]?.message?.content?.trim?.() || ''; // extract assistant reply text (empty string for safe fallback)
+          const assistantReplyText = openAiResponseJson?.candidates?.[0]?.content?.parts?.[0]?.text?.toString?.().trim?.() || ''; // extract assistant reply text (empty string for safe fallback)
           return sendJsonResponse(httpResponse, 200, { reply: assistantReplyText }); // respond to client with reply payload
         } catch {                                                        // shield internal errors in dev proxy
           return sendJsonResponse(httpResponse, 500, { error: 'Server error' });     // generic error to the client
@@ -72,4 +68,5 @@ function sendJsonResponse(httpResponse, httpStatusCode, responseBody) {         
   httpResponse.setHeader('Content-Type', 'application/json');          // JSON content type
   httpResponse.end(JSON.stringify(responseBody));                      // serialize and finish response
 }
+
 
