@@ -23,11 +23,11 @@ export async function renderMarkerForSel(engineComponents, world, selection) {  
   const asPlainValue = (v) => (v && typeof v === "object" && "value" in v ? v.value : v);
 
   // fill overlay fields with attributes (debug-friendly names)
-  const markerName = asPlainValue(attrs.Name); // reuse marker data for prompt
-  const markerObjectType = asPlainValue(attrs.ObjectType);
-  const markerTag = asPlainValue(attrs.Tag);
-  const markerCategory = asPlainValue(attrs._category);
-  const markerLocalId = asPlainValue(attrs._localId);
+  const markerName = asPlainValue(attrs.Name) || 'Not mentioned!'; // reuse marker data for prompt
+  const markerObjectType = asPlainValue(attrs.ObjectType) || 'Not mentioned!';
+  const markerTag = asPlainValue(attrs.Tag) || 'Not mentioned!';
+  const markerCategory = asPlainValue(attrs._category) || 'Not mentioned!';
+  const markerLocalId = asPlainValue(attrs._localId) || 'Not mentioned!';
   markerLabelElemTemp.querySelector(".val-name").textContent = markerName;
   markerLabelElemTemp.querySelector(".val-objecttype").textContent = markerObjectType;
   markerLabelElemTemp.querySelector(".val-tag").textContent = markerTag;

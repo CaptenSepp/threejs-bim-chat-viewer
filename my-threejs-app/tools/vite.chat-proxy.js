@@ -21,7 +21,8 @@ export default function createChatProxyPlugin() {                      // create
           /** @type {string} */
           const userMessageText = (requestBody?.message ?? '').toString().trim(); // normalize message text (string) from client, Pulls the “message” text from the body.If it’s missing, use an empty string.Make sure it’s a string, then remove extra spaces from start/end.
           const referencePromptSuffix = formatReferenceForPrompt(requestBody?.reference); // include selected model reference details
-          const promptText = 'Antworte kurz.\n\n' + userMessageText + referencePromptSuffix; // extend prompt with reference data
+          const contextIntro = referencePromptSuffix ? 'Referenzinfo: Dieses Element stammt aus einem Architekturmodell und wurde von mir ausgewaehlt. Nutze meine Daten und beantworte dazu passend.\\n\\n' : 'Referenzinfo: Wir sprechen ueber ein Architekturmodell.\\n\\n'; // give the assistant concise scene context
+          const promptText = 'Antworte kurz.\\n\\n' + contextIntro + userMessageText + referencePromptSuffix; // extend prompt with reference data
           console.log('[Gemini prompt]', promptText); // debug prompt preview
           if (!userMessageText) return sendJsonResponse(httpResponse, 400, { error: 'Missing message' }); // reject when client sends empty input
           const openAiApiKey = process.env.GOOGLE_API_KEY;             // read local dev API key from environment (never exposed to browser), Looks for your OpenAI API key in your dev machine's environment variables
@@ -38,7 +39,7 @@ export default function createChatProxyPlugin() {                      // create
                 contents: [                                              // conversation messages
                   { role: 'user', parts: [{ text: promptText }] }, // system instruction
                 ],
-                generationConfig: { temperature: 0.3, maxOutputTokens: 200 }, // cap output length 
+                generationConfig: { temperature: 0.3, maxOutputTokens: 100 }, // cap output length 
               }),
             });
             if (openAiHttpResponse.ok) {

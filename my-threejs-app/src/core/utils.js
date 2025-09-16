@@ -26,7 +26,8 @@ export async function loadFragmentsFromPath(fragments, path = "/fragments/custom
     const normalizedPath = path.replace(/\\/g, '/'); // normalize slashes for consistent model ids
     const trimmedPath = normalizedPath.replace(/^\/+/, ''); // drop leading slashes to align with repo structure
     let modelId = trimmedPath || 'model'; // derive a stable identifier from the fragment path
-    if (!modelId.startsWith('public/')) modelId = 'public/' + modelId; // ensure public/ prefix so chat sees actual asset path
+    const fileTail = modelId.split('/').pop() || modelId; // collapse to last path segment for nicer ids
+    modelId = fileTail.replace(/\.frag$/i, '') || fileTail; // drop .frag suffix to keep clean name
     await fragments.core.load(buffer, { modelId }); // register model with derived identifier so selections report current file
   } catch (error) {
     console.error(`Error loading fragments from ${path}:`, error);

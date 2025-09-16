@@ -16,7 +16,7 @@ export function formatReferenceForPrompt(reference) { // include selection id pl
   if (!reference || typeof reference !== 'object') return '';
   const lines = [];
   const toText = value => {
-    if (value === undefined || value === null || value === '') return '';
+    if (value === undefined || value === null || value === '') return 'Not mentioned!';
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
   };
@@ -38,7 +38,7 @@ export function formatReferenceForPrompt(reference) { // include selection id pl
     const fallback = Object.entries(reference)
       .filter(([, value]) => value !== undefined && value !== null && value !== '')
       .slice(0, 5)
-      .map(([key, value]) => key + ': ' + (typeof value === 'object' ? JSON.stringify(value) : String(value)));
+      .map(([key, value]) => key + ': ' + toText(value));
     lines.push(...fallback);
   }
   if (!lines.length) return '';
