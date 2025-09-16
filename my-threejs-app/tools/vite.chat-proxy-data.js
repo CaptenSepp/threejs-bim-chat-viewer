@@ -27,12 +27,25 @@ export function formatReferenceForPrompt(reference) { // include selection id pl
   appendLine('Model ID', reference.modelId);
   appendLine('Item ID', reference.itemId);
   const attrs = reference.attributes;
+  const attributeSegments = [];
+  let hasAttributeDetails = false; // track whether any attribute text exists
+  const appendAttribute = (label, value) => {
+    const textValue = toText(value);
+    if (!textValue || textValue === 'Not mentioned!') return;
+    hasAttributeDetails = true;
+    attributeSegments.push(label + ': ' + textValue);
+  };
   if (attrs && typeof attrs === 'object') {
-    appendLine('Name', attrs.name ?? attrs.Name);
-    appendLine('Object Type', attrs.objectType ?? attrs.ObjectType);
-    appendLine('Tag', attrs.tag ?? attrs.Tag);
-    appendLine('Category', attrs.category ?? attrs._category);
-    appendLine('Local ID', attrs.localId ?? attrs._localId);
+    appendAttribute('Name', attrs.name ?? attrs.Name);
+    appendAttribute('Object Type', attrs.objectType ?? attrs.ObjectType);
+    appendAttribute('Tag', attrs.tag ?? attrs.Tag);
+    appendAttribute('Category', attrs.category ?? attrs._category);
+    appendAttribute('Local ID', attrs.localId ?? attrs._localId);
+  }
+  if (hasAttributeDetails) {
+    lines.push('Eigenschaften: ' + attributeSegments.join(', '));
+  } else if (attrs && typeof attrs === 'object') {
+    lines.push('Eigenschaften: Not mentioned!');
   }
   if (!lines.length) {
     const fallback = Object.entries(reference)
@@ -42,7 +55,7 @@ export function formatReferenceForPrompt(reference) { // include selection id pl
     lines.push(...fallback);
   }
   if (!lines.length) return '';
-  return '\n\nReferenzdaten:\n' + lines.join('\n');
+  return '\n\nReferenzdaten:\n' + lines.join('\\n');
 }
 
 /**
@@ -56,3 +69,4 @@ export function sendJsonResponse(httpResponse, httpStatusCode, responseBody) {  
   httpResponse.setHeader('Content-Type', 'application/json');          // JSON content type
   httpResponse.end(JSON.stringify(responseBody));                      // serialize and finish response
 }
+

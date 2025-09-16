@@ -9,7 +9,7 @@ export default function createChatProxyPlugin() {                      // create
   // “Plugin” here means “extra behavior” added to the dev server
   return {
     name: 'chat-proxy',                                                // plugin name (for Vite debug output)
-    
+
     /** @param {{ middlewares: { use: (handler: (req: any, res: any, next: Function) => void) => void } }} devServer */
     configureServer(devServer) {                                       // hook into Vite dev server (middleware registration), Vite calls this when it starts the dev server.
 
@@ -17,12 +17,14 @@ export default function createChatProxyPlugin() {                      // create
         if (httpRequest.method !== 'POST' || !httpRequest.url?.startsWith('/api/assistant-reply')) return nextMiddleware(); // only handle POST /api/assistant-reply, pass through others
         try {
           const requestBody = await readRequestJsonBody(httpRequest);  // parse JSON request body from stream, If the browser sent { "message": "Hello" }, then requestBody.message is "Hello"
-          
+
           /** @type {string} */
           const userMessageText = (requestBody?.message ?? '').toString().trim(); // normalize message text (string) from client, Pulls the “message” text from the body.If it’s missing, use an empty string.Make sure it’s a string, then remove extra spaces from start/end.
           const referencePromptSuffix = formatReferenceForPrompt(requestBody?.reference); // include selected model reference details
-          const contextIntro = referencePromptSuffix ? 'Referenzinfo: Dieses Element stammt aus einem Architekturmodell und wurde von mir ausgewaehlt. Nutze meine Daten und beantworte dazu passend.\\n\\n' : 'Referenzinfo: Wir sprechen ueber ein Architekturmodell.\\n\\n'; // give the assistant concise scene context
-          const promptText = 'Antworte kurz.\\n\\n' + contextIntro + userMessageText + referencePromptSuffix; // extend prompt with reference data
+          const contextIntro = referencePromptSuffix 
+          ? 'Referenzinfo: Dieses Element stammt aus einem Architekturmodell und wurde von mir ausgewaehlt. Nutze meine Daten und beantworte dazu passend. ' 
+          : 'Referenzinfo: Wir sprechen ueber ein Architekturmodell. '; // give the assistant concise scene context
+          const promptText = 'Antworte kurz. ' + contextIntro + userMessageText + referencePromptSuffix; // extend prompt with reference data
           console.log('[Gemini prompt]', promptText); // debug prompt preview
           if (!userMessageText) return sendJsonResponse(httpResponse, 400, { error: 'Missing message' }); // reject when client sends empty input
           const openAiApiKey = process.env.GOOGLE_API_KEY;             // read local dev API key from environment (never exposed to browser), Looks for your OpenAI API key in your dev machine's environment variables
