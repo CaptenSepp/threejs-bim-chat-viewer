@@ -2,36 +2,35 @@
 // Simple dev proxy ??omiddle person??? (hides key and forwards message to the real AI server and brings the answer back) and provides /api/assistant-reply during npm run dev (local only)
 // Node.js runtime: This code runs inside Vite??Ts dev server process (this computer), not in the page
 
-import { readRequestJsonBody, formatReferenceForPrompt, sendJsonResponse } from './vite.chat-proxy-data.js';
+import { parseHttpRequestJsonBody, buildReferenceSummaryForPrompt, sendHttpJsonResponse } from './vite.chat-proxy-data.js';
 
 /** @returns {{ name: string, configureServer(devServer: { middlewares: { use: (handler: (req: any, res: any, next: Function) => void) => void } }): void }} */
-export default function createChatProxyPlugin() {                      // creates the chat proxy Vite plugin, Vite reads this and adds plugin to the dev server
+export default function createChatProxyPlugin() {                                                                           // creates the chat proxy Vite plugin, Vite reads this and adds plugin to the dev server
   // “Plugin” here means “extra behavior” added to the dev server
   return {
-    name: 'chat-proxy',                                                // plugin name (for Vite debug output)
+    name: 'chat-proxy',                                                                                                     // plugin name (for Vite debug output)
 
     /** @param {{ middlewares: { use: (handler: (req: any, res: any, next: Function) => void) => void } }} devServer */
-    configureServer(devServer) {                                       // hook into Vite dev server (middleware registration), Vite calls this when it starts the dev server.
+    configureServer(devServer) {                                                                                            // hook into Vite dev server (middleware registration), Vite calls this when it starts the dev server.
 
-      devServer.middlewares.use(async (httpRequest, httpResponse, nextMiddleware) => { // add an express-style middleware to intercept requests (registration function), dev server is Vite’s server instance
+      devServer.middlewares.use(async (httpRequest, httpResponse, nextMiddleware) => {                                      // add an express-style middleware to intercept requests (registration function), dev server is Vite’s server instance
         if (httpRequest.method !== 'POST' || !httpRequest.url?.startsWith('/api/assistant-reply')) return nextMiddleware(); // only handle POST /api/assistant-reply, pass through others
         try {
-          const requestBody = await readRequestJsonBody(httpRequest);  // parse JSON request body from stream, If the browser sent { "message": "Hello" }, then requestBody.message is "Hello"
+          const requestBody = await parseHttpRequestJsonBody(httpRequest);                                                  // parse JSON request body from stream, If the browser sent { "message": "Hello" }, then requestBody.message is "Hello"
 
           /** @type {string} */
-          const userMessageText = (requestBody?.message ?? '').toString().trim(); // normalize message text (string) from client, Pulls the “message” text from the body.If it’s missing, use an empty string.Make sure it’s a string, then remove extra spaces from start/end.
-          const referencePromptSuffix = formatReferenceForPrompt(requestBody?.reference); // include selected model reference details
+          const userMessageText = (requestBody?.message ?? '').toString().trim();                                           // normalize message text (string) from client, Pulls the “message” text from the body.If it’s missing, use an empty string.Make sure it’s a string, then remove extra spaces from start/end.
+          const referencePromptSuffix = buildReferenceSummaryForPrompt(requestBody?.reference);                             // include selected model reference details
           const contextIntro = referencePromptSuffix 
           ? 'Referenzinfo: Dieses Element stammt aus einem Architekturmodell und wurde von mir ausgewaehlt. Nutze meine Daten und beantworte dazu passend. ' 
-          : 'Referenzinfo: Wir sprechen ueber ein Architekturmodell. '; // give the assistant concise scene context
-          const promptText = 'Prompt: ' + contextIntro + referencePromptSuffix + '\nAntworte kurz dazu.\nText: ' + userMessageText; // extend prompt with reference data
-          console.log('[Gemini prompt]', promptText); // debug prompt preview
-          if (!userMessageText) return sendJsonResponse(httpResponse, 400, { error: 'Missing message' }); // reject when client sends empty input
-          const openAiApiKey = process.env.GOOGLE_API_KEY;             // read local dev API key from environment (never exposed to browser), Looks for your OpenAI API key in your dev machine's environment variables
-          if (!openAiApiKey) return sendJsonResponse(httpResponse, 500, { error: 'GOOGLE_API_KEY missing' }); // fail fast if key is not set locally
+          const promptText = 'Prompt: ' + contextIntro + referencePromptSuffix + '\nAntworte kurz dazu.\nText: ' + userMessageText;            // extend prompt with reference data
+          : 'Referenzinfo: Wir sprechen ueber ein Architekturmodell. ';                                                                        // give the assistant concise scene context
+          console.log('[Gemini prompt]', promptText);                                                                                          // debug prompt preview
+          if (!userMessageText) return sendHttpJsonResponse(httpResponse, 400, { error: 'Missing message' });                                  // reject when client sends empty input
+          const openAiApiKey = process.env.GOOGLE_API_KEY;  // read local dev API key from environment (never exposed to browser), Looks for your OpenAI API key in your dev machine's environment variables  if (!openAiApiKey) return sendHttpJsonResponse(httpResponse, 500, { error: 'GOOGLE_API_KEY missing' });  fail fast if key is not set locally
           const googleModels = (process.env.GOOGLE_MODELS || 'gemini-1.5-flash,gemini-1.5-pro').split(',').map(s => s.trim()).filter(Boolean); // model fallback list
-          let assistantReplyText = ''; // collect reply on first success
-          for (const model of googleModels) { // try each model until one succeeds
+          let assistantReplyText = '';                                                                                                         // collect reply on first success
+          for (const model of googleModels) {                                                                                                  // try each model until one succeeds
             const openAiHttpResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(openAiApiKey), { // call OpenAI upstream (Chat Completions), This is the "real" AI server.
               method: 'POST',                                            // HTTP POST to send a JSON body
               headers: {
@@ -51,12 +50,13 @@ export default function createChatProxyPlugin() {                      // create
             }
             if (![429, 403, 503].includes(openAiHttpResponse.status)) break; // non-quota error -> stop
           }
-          if (!assistantReplyText) return sendJsonResponse(httpResponse, 502, { error: 'Upstream error' }); // propagate upstream failure (bad gateway) if all models failed
-          return sendJsonResponse(httpResponse, 200, { reply: assistantReplyText }); // respond to client with reply payload
+          if (!assistantReplyText) return sendHttpJsonResponse(httpResponse, 502, { error: 'Upstream error' }); // propagate upstream failure (bad gateway) if all models failed
+          return sendHttpJsonResponse(httpResponse, 200, { reply: assistantReplyText }); // respond to client with reply payload
         } catch {                                                        // shield internal errors in dev proxy
-          return sendJsonResponse(httpResponse, 500, { error: 'Server error' });     // generic error to the client
+          return sendHttpJsonResponse(httpResponse, 500, { error: 'Server error' });     // generic error to the client
         }
       });
     },
   };
 }
+
