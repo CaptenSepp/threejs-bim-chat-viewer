@@ -14,49 +14,34 @@ export function readRequestJsonBody(httpRequest) {                            //
 
 export function formatReferenceForPrompt(reference) { // include selection id plus marker attributes
   if (!reference || typeof reference !== 'object') return '';
-  const lines = [];
   const toText = value => {
     if (value === undefined || value === null || value === '') return 'Not mentioned!';
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
   };
-  const appendLine = (label, value) => {
-    const textValue = toText(value);
-    if (textValue) lines.push(label + ': ' + textValue);
-  };
-  appendLine('Model ID', reference.modelId);
-  appendLine('Item ID', reference.itemId);
-  const attrs = reference.attributes;
-  const attributeSegments = [];
-  let hasAttributeDetails = false; // track whether any attribute text exists
-  const appendAttribute = (label, value) => {
-    const textValue = toText(value);
-    if (!textValue || textValue === 'Not mentioned!') return;
-    hasAttributeDetails = true;
-    attributeSegments.push(label + ': ' + textValue);
-  };
-  if (attrs && typeof attrs === 'object') {
-    appendAttribute('Name', attrs.name ?? attrs.Name);
-    appendAttribute('Object Type', attrs.objectType ?? attrs.ObjectType);
-    appendAttribute('Tag', attrs.tag ?? attrs.Tag);
-    appendAttribute('Category', attrs.category ?? attrs._category);
-    appendAttribute('Local ID', attrs.localId ?? attrs._localId);
-  }
-  if (hasAttributeDetails) {
-    lines.push('Eigenschaften: ' + attributeSegments.join(', '));
-  } else if (attrs && typeof attrs === 'object') {
-    lines.push('Eigenschaften: Not mentioned!');
-  }
-  if (!lines.length) {
-    const fallback = Object.entries(reference)
-      .filter(([, value]) => value !== undefined && value !== null && value !== '')
-      .slice(0, 5)
-      .map(([key, value]) => key + ': ' + toText(value));
-    lines.push(...fallback);
-  }
-  if (!lines.length) return '';
-  return '\n\nReferenzdaten:\n' + lines.join('\\n');
+  const summaryParts = [];
+  summaryParts.push(`Model ID: ${toText(reference.modelId)}`);
+  summaryParts.push(`Item ID: ${toText(reference.itemId)}`);
+  const attrsSource = reference.attributes;
+  const attrs = attrsSource && typeof attrsSource === 'object' ? attrsSource : {};
+  const attributePairs = [
+    ['Name', attrs.Name ?? attrs.name],
+    ['Object Type', attrs.ObjectType ?? attrs.objectType],
+    ['Tag', attrs.Tag ?? attrs.tag],
+    ['Category', attrs._category ?? attrs.category],
+    ['Local ID', attrs._localId ?? attrs.localId],
+  ];
+  const attributeText = 'Eigenschaften: ' + attributePairs
+    .map(([label, value]) => `${label}: ${toText(value)}`)
+    .join(', ');
+  summaryParts.push(attributeText);
+  return `
+Referenzdaten:
+${summaryParts.join(', ')}`;
 }
+
+
+
 
 /**
  * @param {{ statusCode: number; setHeader(name: string, value: string): void; end(body?: string): void }} httpResponse

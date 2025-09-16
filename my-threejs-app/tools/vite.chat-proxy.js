@@ -24,7 +24,7 @@ export default function createChatProxyPlugin() {                      // create
           const contextIntro = referencePromptSuffix 
           ? 'Referenzinfo: Dieses Element stammt aus einem Architekturmodell und wurde von mir ausgewaehlt. Nutze meine Daten und beantworte dazu passend. ' 
           : 'Referenzinfo: Wir sprechen ueber ein Architekturmodell. '; // give the assistant concise scene context
-          const promptText = 'Antworte kurz. ' + contextIntro + userMessageText + referencePromptSuffix; // extend prompt with reference data
+          const promptText = 'Prompt: ' + contextIntro + referencePromptSuffix + '\nAntworte kurz dazu.\nText: ' + userMessageText; // extend prompt with reference data
           console.log('[Gemini prompt]', promptText); // debug prompt preview
           if (!userMessageText) return sendJsonResponse(httpResponse, 400, { error: 'Missing message' }); // reject when client sends empty input
           const openAiApiKey = process.env.GOOGLE_API_KEY;             // read local dev API key from environment (never exposed to browser), Looks for your OpenAI API key in your dev machine's environment variables
