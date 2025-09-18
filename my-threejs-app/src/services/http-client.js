@@ -31,11 +31,11 @@ export async function getJson(url, { headers = {}, signal } = {}) {      // perf
  * @param {{ headers?: Record<string, string>, signal?: AbortSignal }} [options]
  */
 export async function postJson(url, body, { headers = {}, signal } = {}) { // perform a POST request with JSON body
-  const res = await fetch(url, {                                         // send request using Fetch API (browser)
-    method: 'POST',                                                      // HTTP verb
-    headers: { 'Content-Type': 'application/json', ...headers },         // ensure JSON content type; allow extra headers
-    body: JSON.stringify(body),                                          // serialize JS object to JSON string
-    signal,                                                              // optional AbortSignal for cancellation
+  const res = await fetch(url, {                                           // send request using Fetch API (browser)
+    method: 'POST',                                                        // HTTP verb
+    headers: { 'Content-Type': 'application/json', ...headers },           // ensure JSON content type; allow extra headers
+    body: JSON.stringify(body),                                            // serialize JS object to JSON string
+    signal,                                                                // optional AbortSignal for cancellation
   });
-  return handleJson(res, 'POST fehlgeschlagen');                         // parse or show snackbar on error
+  return handleJson(res, 'POST fehlgeschlagen');                           // parse or show snackbar on error
 }

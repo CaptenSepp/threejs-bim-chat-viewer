@@ -56,11 +56,11 @@ export function sendHttpJsonResponse(outgoingHttpResponse, responseStatusCode, r
   outgoingHttpResponse.end(JSON.stringify(responseBodyPayload));                                       // serialize payload and finish response
 }
 
-export function stringifyChatHistoryForPrompt(historyPayload) {                // return chat history as JSON text for prompts
-  if (!Array.isArray(historyPayload)) return '[]';                              // when payload missing or invalid -> empty history
+export function stringifyChatHistoryForPrompt(historyPayload) { // return chat history as JSON text for prompts
+  if (!Array.isArray(historyPayload)) return '[]';              // when payload missing or invalid -> empty history
   try {
-    return JSON.stringify(historyPayload);                                     // serialize list to JSON string (stable formatting)
+    return JSON.stringify(historyPayload);                      // serialize list to JSON string (stable formatting)
   } catch {
-    return '[]';                                                               // fallback to empty history on stringify failure
+    return '[]';                                                // fallback to empty history on stringify failure
   }
 }
