@@ -13,18 +13,19 @@ export default function createChatProxyPlugin() {                               
     /** @param {{ middlewares: { use: (handler: (req: any, res: any, next: Function) => void) => void } }} devServer */
     configureServer(devServer) {                                                                                            // hook into Vite dev server (middleware registration), Vite calls this when it starts the dev server.
 
-      devServer.middlewares.use(async (httpRequest, httpResponse, nextMiddleware) => {                                      // add an express-style middleware to intercept requests (registration function), dev server is Vite’s server instance
+      devServer.middlewares.use(async (httpRequest, httpResponse, nextMiddleware) => {                                      // add an express-style middleware to intercept requests (registration function), dev server is Vite's server instance
         if (httpRequest.method !== 'POST' || !httpRequest.url?.startsWith('/api/assistant-reply')) return nextMiddleware(); // only handle POST /api/assistant-reply, pass through others
         try {
           const requestBody = await parseHttpRequestJsonBody(httpRequest);                                                  // parse JSON request body from stream, If the browser sent { "message": "Hello" }, then requestBody.message is "Hello"
 
           /** @type {string} */
-          const userMessageText = (requestBody?.message ?? '').toString().trim();                                           // normalize message text (string) from client, Pulls the “message” text from the body.If it’s missing, use an empty string.Make sure it’s a string, then remove extra spaces from start/end.
+          const userMessageText = (requestBody?.message ?? '').toString().trim();                                           // normalize message text (string) from client, Pulls the â€œmessageâ€ text from the body.If itâ€™s missing, use an empty string.Make sure itâ€™s a string, then remove extra spaces from start/end.
           const referencePromptSuffix = buildReferenceSummaryForPrompt(requestBody?.reference);                             // include selected model reference details
           const contextIntro = referencePromptSuffix 
           ? 'Referenzinfo: Dieses Element stammt aus einem Architekturmodell und wurde von mir ausgewaehlt. Nutze meine Daten und beantworte dazu passend. ' 
-          const promptText = 'Prompt: ' + contextIntro + referencePromptSuffix + '\nAntworte kurz dazu.\nText: ' + userMessageText;            // extend prompt with reference data
           : 'Referenzinfo: Wir sprechen ueber ein Architekturmodell. ';                                                                        // give the assistant concise scene context
+          const historyJson = JSON.stringify(requestBody?.history ?? []);                                                   // stringify full chat history so the prompt includes prior questions and answers for context
+          const promptText = 'Prompt: ' + contextIntro + referencePromptSuffix + '\nChatverlauf: ' + historyJson + '\nAntworte kurz dazu.\nText: ' + userMessageText;            // extend prompt with reference data
           console.log('[Gemini prompt]', promptText);                                                                                          // debug prompt preview
           if (!userMessageText) return sendHttpJsonResponse(httpResponse, 400, { error: 'Missing message' });                                  // reject when client sends empty input
           const openAiApiKey = process.env.GOOGLE_API_KEY;  // read local dev API key from environment (never exposed to browser), Looks for your OpenAI API key in your dev machine's environment variables  if (!openAiApiKey) return sendHttpJsonResponse(httpResponse, 500, { error: 'GOOGLE_API_KEY missing' });  fail fast if key is not set locally

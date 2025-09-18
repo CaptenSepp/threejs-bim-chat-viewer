@@ -19,7 +19,7 @@ export async function createWorkerObjectUrl(url) {
   }
 }
 
-export async function loadFragmentsFromPath(fragments, path = "/fragments/custom_psets.frag") { // /fragments/school_str.frag
+export async function loadFragmentsFromPath(fragments, path = "/fragments/school_str.frag") { // /fragments/school_str.frag
   try {
     const file = await fetchOrThrow(path, 'Failed to fetch fragments at');
     const buffer = await file.arrayBuffer();
