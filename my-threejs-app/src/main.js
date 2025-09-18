@@ -8,7 +8,7 @@ import { displayUserErrorSnackbar } from "./ui/error-notify.js";
 
 const viewerContainer = document.getElementById("three-canvas");
 
-// wrap startup in async init to avoid top‑level await parse issues
+// wrap startup in async init to avoid top-level await parse issues
 async function init() {
   // creates viewer engine and scene 
   const { engineComponents, world, fragments } = await createViewerEngine(viewerContainer);

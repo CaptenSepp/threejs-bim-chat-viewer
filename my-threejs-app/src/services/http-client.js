@@ -7,7 +7,7 @@ async function readTextSafely(res) {                                     // safe
 }
 
 async function handleJson(res, onErrorPrefix = 'Fehler bei Anfrage') {   // parse JSON and surface HTTP errors consistently
-  if (!res.ok) {                                                         // non-2xx → treat as error
+  if (!res.ok) {                                                         // non-2xx -> treat as error
     const text = await readTextSafely(res);                              // try to get error text from server
     const msg = text || `${onErrorPrefix}: HTTP ${res.status}`;          // build readable message (fallback to status)
     displayUserErrorSnackbar(msg);                                       // inform user in-app (snackbar)

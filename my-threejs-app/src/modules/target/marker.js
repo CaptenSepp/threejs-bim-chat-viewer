@@ -15,7 +15,7 @@ export function setupMarker(engineComponents) {                                 
 export async function renderMarkerForSel(engineComponents, world, selection) {     // shows marker and fills metadata
   const fragmentsManager = engineComponents.get(EngineFragmentsManager);                 // access fragment data service
 
-  // fetch attributes for the selected item (attributes API → object of key/value pairs)
+  // fetch attributes for the selected item (attributes API -> object of key/value pairs)
   const attributesByModel = await fragmentsManager.getData({ [selection.modelId]: [selection.itemId] }); // returns { [modelId]: [attrsForItem] }
   const attrs = attributesByModel[selection.modelId][0];                                 // take first (only) item attributes
 
