@@ -1,3 +1,4 @@
+// @ts-check
 import { escapeHTML } from "../../../core/utils.js";
 
 export const chatMessages = document.getElementById('chat-messages');

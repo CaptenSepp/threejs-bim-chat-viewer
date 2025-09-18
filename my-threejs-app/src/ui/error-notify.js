@@ -1,4 +1,5 @@
-// Simple in-app error notifier (tiny snackbar)
+// @ts-check
+// Simple in-app error notifier (tiny snackbar) the one button that actually shows a red error box on screen
 let ErrorSnackElem = null;     // holds the DOM element for the snackbar (created once)
 let ErrorSnackTimer = null;    // timeout id used to hide the snackbar after a delay
 
@@ -20,4 +21,4 @@ export function displayUserErrorSnackbar(messageText = 'Ein Fehler ist aufgetret
   } catch (_) { /* no-op: never throw from notifier */ }
 }
 
-export { displayUserErrorSnackbar as displayUserErrorSnackbar };
+// @ts-check

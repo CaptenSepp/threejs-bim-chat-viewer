@@ -1,3 +1,4 @@
+// @ts-check
 import { loadFragmentsFromPath } from "./core/utils.js";
 import { createViewerEngine } from "./core/viewer.js";
 import { setComposerReference } from "./modules/chat/chat.js"; // links 3D selection to chat actions
@@ -7,7 +8,7 @@ import { displayUserErrorSnackbar } from "./ui/error-notify.js";
 
 const viewerContainer = document.getElementById("three-canvas");
 
-// wrap startup in async init to avoid top‑level await parse issues
+// wrap startup in async init to avoid top-level await parse issues
 async function init() {
   // creates viewer engine and scene 
   const { engineComponents, world, fragments } = await createViewerEngine(viewerContainer);
@@ -25,10 +26,13 @@ async function init() {
   // handles a resolved selection: highlight, chat, marker, camera
   async function applySelEffects(sel) {
     applySelHighlight(engineComponents, sel);
+    const markerAttributes = await renderMarkerForSel(engineComponents, world, sel); // reuse marker data
     setComposerReference({
-      label: `Item ${sel.itemId}`, modelId: sel.modelId, itemId: sel.itemId,
+      label: `Item ${sel.itemId}`,
+      modelId: sel.modelId,
+      itemId: sel.itemId,
+      attributes: markerAttributes || null, // forward marker fields for chat
     });
-    await renderMarkerForSel(engineComponents, world, sel);
     // await fitCameraToSelectionBox(world, selection); // focus camera on selection for commented for later uses
   }
 

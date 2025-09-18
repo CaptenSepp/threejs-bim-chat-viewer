@@ -1,6 +1,7 @@
+// @ts-check
 import { Raycasters } from '@thatopen/components';
 import { describe, expect, it, vi } from 'vitest';
-import { applySelectionHighlight, setupRaycastSelection } from '../src/raycaster.js';
+import { applySelHighlight, setupRaycastSel } from '../src/modules/target/raycaster.js';
 
 
 vi.mock('@thatopen/components', () => ({                        // mocks the package to avoid real engine classes (module mock) to isolate unit under test
@@ -22,7 +23,7 @@ describe('raycaster applySelectionHighlight', () => {
     const components = { get: vi.fn(() => ({ resetHighlight, highlight, core })) }; // simulate components service registry
     const selection = { modelId: 'model1', itemId: 42 };      // example like a raycast selection to drive expected arguments
 
-    applySelectionHighlight(components, selection);           // call the unit under test (UUT)
+    applySelHighlight(components, selection);           // call the unit under test (UUT)
 
     expect(components.get).toHaveBeenCalled();
     expect(resetHighlight).toHaveBeenCalled();
@@ -60,7 +61,7 @@ describe('raycaster setupRaycastSelection', () => {
     const engineComponents = { get: vi.fn(() => raycastersService) };
 
     // initialize and then simulate a click event to test the end-to-end selection flow
-    setupRaycastSelection(engineComponents, world, handleRaycastSelection);
+    setupRaycastSel(engineComponents, world, handleRaycastSelection);
     await canvas.handlers.click({});
 
     // handler should receive the IDs from the raycast result

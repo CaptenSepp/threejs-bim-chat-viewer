@@ -1,3 +1,4 @@
+// @ts-check
 import { beforeEach, describe, expect, it, afterEach } from 'vitest';
 
 let setComposerReference, clearComposerReference;
@@ -16,7 +17,9 @@ beforeEach(async () => { // sets up a minimal DOM for tests to simulate browser 
     },
     clear: () => {                                        // clears all keys in the mock
       for (const key in store) delete store[key];
-    }
+    },
+    length: 0,
+    key: () => null
   };
 
   document.body.innerHTML = `
@@ -27,7 +30,7 @@ beforeEach(async () => { // sets up a minimal DOM for tests to simulate browser 
     <span id="chat-reference-label"></span>
     <button id="clear-reference-btn"></button>
   `;
-  const mod = await import('../src/chat.js');        // dynamically import chat module (dynamic import) to bind to DOM elements created above
+  const mod = await import('../src/modules/chat/chat.js');        // dynamically import chat module (dynamic import) to bind to DOM elements created above
   setComposerReference = mod.setComposerReference;   // get API export
   clearComposerReference = mod.clearComposerReference;
 });
@@ -52,4 +55,3 @@ describe('chat references', () => {
     expect(container.classList.contains('hidden')).toBe(true);             // expects chip to hide after clearing
   });
 }); 
-
