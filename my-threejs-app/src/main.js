@@ -1,24 +1,24 @@
 // @ts-check
 import { loadFragmentsFromPath } from "./core/utils.js";
 import { createViewerEngine } from "./core/viewer.js";
-import { setComposerReference } from "./modules/chat/chat.js"; // links 3D selection to chat actions
-import { renderMarkerForSel, setupMarker } from "./modules/target/marker.js";
-import { applySelHighlight, setupRaycastSel } from "./modules/target/raycaster.js";
+import { setComposerReference } from "./modules/chat/chat.js";
+import { renderMarkerForSel, setMarker } from "./modules/target/marker.js";
+import { applySelHighlight, setRaycastEvents } from "./modules/target/raycaster.js";
 import { displayUserErrorSnackbar } from "./ui/error-notify.js";
 
 const viewerContainer = document.getElementById("three-canvas");
 
-// wrap startup in async init to avoid top-level await parse issues
-async function init() {
-  // creates viewer engine and scene 
-  const { engineComponents, world, fragments } = await createViewerEngine(viewerContainer);
 
-  window.applyChatSelectionHighlight = sel => applySelHighlight(engineComponents, sel); // re-applies selection highlight in 3D scene to reflect chat clicks in 3D
+async function init() { // wrap startup in async init to avoid top-level await parse issues
 
-  async function fitCameraToSelectionBox(world, selection) {    // focuses camera on the selected area
+  const { engineComponents, world, fragments } = await createViewerEngine(viewerContainer);// creates viewer engine and scene
+
+  window.applyChatSelHighlight = sel => applySelHighlight(engineComponents, sel); // re-applies highlight in 3D scene - chat clicks in 3D
+
+  async function fitCameraToSelBox(world, sel) {    // focuses camera on the selected area
     const camControls = world.camera.controls;                  // use camera controls once
-    if (selection.box) {                                        // if bounding box exists, frame it (Box3)
-      await camControls.fitToBox(selection.box, true);          // center and zoom to the box
+    if (sel.box) {                                        // if bounding box exists, frame it (Box3)
+      await camControls.fitToBox(sel.box, true);          // center and zoom to the box
       return;
     }
   }
@@ -33,15 +33,15 @@ async function init() {
       itemId: sel.itemId,
       attributes: markerAttributes || null, // forward marker fields for chat
     });
-    // await fitCameraToSelectionBox(world, selection); // focus camera on selection for commented for later uses
+    // await fitCameraToSelBox(world, selection); // focus camera on selection for commented for later uses
   }
 
-  setupRaycastSel(engineComponents, world, applySelEffects);
+  setRaycastEvents(engineComponents, world, applySelEffects);
 
   // loads fragments and prepares marker overlay (initialization)
   await loadFragmentsFromPath(fragments);
 
-  setupMarker(engineComponents);
+  setMarker(engineComponents);
 }
 
 // catch startup errors and show to user
