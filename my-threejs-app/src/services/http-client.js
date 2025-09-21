@@ -6,7 +6,7 @@ async function readTextSafely(res) {                                     // safe
   try { return await res.text(); } catch { return ''; }                  // fallback to empty string if body cannot be read
 }
 
-async function handleJson(res, onErrorPrefix = 'Fehler bei Anfrage') {   // parse JSON and surface HTTP errors consistently
+async function parseJson(res, onErrorPrefix = 'Fehler bei Anfrage') {    // parse JSON and surface HTTP errors consistently
   if (!res.ok) {                                                         // non-2xx -> treat as error
     const text = await readTextSafely(res);                              // try to get error text from server
     const msg = text || `${onErrorPrefix}: HTTP ${res.status}`;          // build readable message (fallback to status)
@@ -20,9 +20,9 @@ async function handleJson(res, onErrorPrefix = 'Fehler bei Anfrage') {   // pars
  * @param {string} url
  * @param {{ headers?: Record<string, string>, signal?: AbortSignal }} [options]
  */
-export async function getJson(url, { headers = {}, signal } = {}) {      // perform a GET request expecting a JSON response
-  const res = await fetch(url, { method: 'GET', headers, signal });      // fire GET with optional headers/AbortSignal
-  return handleJson(res, 'GET fehlgeschlagen');                          // parse or show snackbar on error
+export async function getReqWithJson(url, { headers = {}, signal } = {}) {  // perform a GET request expecting a JSON response
+  const res = await fetch(url, { method: 'GET', headers, signal });         // fire GET with optional headers/AbortSignal
+  return parseJson(res, 'GET fehlgeschlagen');                              // parse or show snackbar on error
 }
 
 /**
@@ -30,12 +30,12 @@ export async function getJson(url, { headers = {}, signal } = {}) {      // perf
  * @param {any} body
  * @param {{ headers?: Record<string, string>, signal?: AbortSignal }} [options]
  */
-export async function postJson(url, body, { headers = {}, signal } = {}) { // perform a POST request with JSON body
-  const res = await fetch(url, {                                           // send request using Fetch API (browser)
-    method: 'POST',                                                        // HTTP verb
-    headers: { 'Content-Type': 'application/json', ...headers },           // ensure JSON content type; allow extra headers
-    body: JSON.stringify(body),                                            // serialize JS object to JSON string
-    signal,                                                                // optional AbortSignal for cancellation
+export async function postReqWithJson(url, body, { headers = {}, signal } = {}) { // perform a POST request with JSON body
+  const res = await fetch(url, {                                 // send request using Fetch API (browser)
+    method: 'POST',                                              // HTTP verb
+    headers: { 'Content-Type': 'application/json', ...headers }, // ensure JSON content type, allow extra headers
+    body: JSON.stringify(body),                                  // serialize JS object to JSON string
+    signal,                                                      // optional AbortSignal for cancellation
   });
-  return handleJson(res, 'POST fehlgeschlagen');                           // parse or show snackbar on error
+  return parseJson(res, 'POST fehlgeschlagen');                  // parse or show snackbar on error
 }

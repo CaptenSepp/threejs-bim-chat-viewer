@@ -1,12 +1,12 @@
 // @ts-check
 import { FragmentsManager as EngineFragmentsManager } from "@thatopen/components";                       // engine service to access fragment data (attributes API)
 
-export async function getSelectionAttributes(engineComponents, selection) {
+export async function getSelectionAttributes(engineComponents, sel) {
   const fragmentsManager = engineComponents.get(EngineFragmentsManager);                                 // access fragment data service
 
 // fetch attributes for the selected item (attributes API -> object of key/value pairs)
-  const attributesByModel = await fragmentsManager.getData({ [selection.modelId]: [selection.itemId] }); // returns { [modelId]: [attrsForItem] }
-  const attrs = attributesByModel[selection.modelId][0];                                                 // take first (only) item attributes
+  const attributesByModel = await fragmentsManager.getData({ [sel.modelId]: [sel.itemId] }); // returns { [modelId]: [attrsForItem] }
+  const attrs = attributesByModel[sel.modelId][0];                                                 // take first (only) item attributes
   return attrs;
 }
 
@@ -30,9 +30,9 @@ export function applyMarkerLabelValues(markerLabelElemTemp, markerName, markerOb
   markerLabelElemTemp.querySelector(".val-localid").textContent = markerLocalId;
 }
 
-export function computeMarkerWorldPosition(selection) {
+export function computeMarkerWorldPosition(sel) {
   // place marker slightly above the selection (position = Vector3 in world space)
-  const markerWorldPosition = selection.center.clone();                  // clone center (avoid mutating selection.center)
+  const markerWorldPosition = sel.center.clone();                  // clone center (avoid mutating selection.center)
   markerWorldPosition.y += 6;                                            // offset in meters
   return markerWorldPosition;
 }

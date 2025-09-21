@@ -20,5 +20,3 @@ export function displayUserErrorSnackbar(messageText = 'Ein Fehler ist aufgetret
     }, durationMs);
   } catch (_) { /* no-op: never throw from notifier */ }
 }
-
-// @ts-check

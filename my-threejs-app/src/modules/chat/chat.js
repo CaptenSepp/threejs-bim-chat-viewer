@@ -1,7 +1,7 @@
 // @ts-check
-import { appendMessageToChat, inputForm, inputField, referenceContainer, referenceLabel, clearReferenceBtn } from "./components/chat-ui.js";
+import { appendMessageToChat, clearReferenceBtn, inputField, inputForm, referenceContainer, referenceLabel } from "./components/chat-ui.js";
 // Import clearer-named helper to call /api/chat (easier to understand for beginners)
-import { messageHistory, persistUserMessage, handleAssistantResponse } from "./chat-helpers.js";
+import { handleAssistantResponse, messageHistory, pushHistoryUserMessage } from "./chat-helpers.js";
 
 // state: current selection reference and history (state)
 let currentReference = null;
@@ -29,14 +29,14 @@ inputField.addEventListener('keydown', e => { // send on Enter
   }
 });
 
-// Make the submit handler async so we can await the server reply (async/await)
+// Make the submit handler async so we can await the server reply
 inputForm.addEventListener('submit', async e => {                                              // collect message and append to UI to render the message
   e.preventDefault();
   const text = (/** @type {HTMLInputElement} */ (inputField)).value.trim();
-  if (!text) return;
+  if (!text) return;                                                                           // return empty if no text (do nothing)
 
   const userMessage = { time: Date.now(), reference: currentReference, text, sender: 'user' }; // compose message object (payload) to store what we need for explicit user message object
-  persistUserMessage(userMessage);
+  pushHistoryUserMessage(userMessage);
 
   (/** @type {HTMLInputElement} */ (inputField)).value = '';
   inputField.focus();

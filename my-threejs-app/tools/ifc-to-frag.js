@@ -1,3 +1,4 @@
+// @ts-check
 // Minimal IFC -> FRAG converter (Node script)
 // How to run (debug ): `node tools/ifc-to-frag.js`
 // Context : IFC = Industry Foundation Classes (BIM format), FRAG = ThatOpen's fragment format (optimized for web rendering).
@@ -30,4 +31,3 @@ convertIfcToFrag().catch((err) => {                                      // Erro
   console.error('Conversion failed:', err);                              // Log full error object (stack/message)
   process.exit(1);                                                       // exit code (conventional CLI failure)
 });
-// @ts-check

@@ -1,8 +1,7 @@
 declare global {
   interface Window {
-    applyChatSelectionHighlight: (sel: { modelId: string; itemId: number }) => void;
+    applyChatSelHighlight: (sel: { modelId: string; itemId: number }) => void;
   }
 }
 
 export {};
-

@@ -8,7 +8,7 @@ export const referenceContainer = document.getElementById('chat-reference-contai
 export const referenceLabel = document.getElementById('chat-reference-label');
 export const clearReferenceBtn = document.getElementById('clear-reference-btn');
 
-function createReferenceChip(reference) {    // creates a clickable chip that jumps back to the 3D selection (UI chip)
+function createReferenceChip(reference) {                // creates a clickable chip that jumps back to the 3D selection (UI chip)
   const clickableRefTag = document.createElement('div'); // container element for the chip
   clickableRefTag.classList.add('message-reference');
   clickableRefTag.textContent = reference.label;
@@ -16,7 +16,7 @@ function createReferenceChip(reference) {    // creates a clickable chip that ju
   clickableRefTag.dataset.itemId = reference.itemId;     // store itemId to target the specific element
   clickableRefTag.addEventListener('click', () => {      // on click, re-select and highlight in 3D (interaction) to restore the selection from chat
     if (clickableRefTag.dataset.itemId) {                // avoid missing id (guard) to prevent invalid highlighting
-      window.applyChatSelectionHighlight({   // trigger global highlighter
+      window.applyChatSelHighlight({                     // trigger global highlighter
         modelId: clickableRefTag.dataset.modelId,
         itemId: +clickableRefTag.dataset.itemId,         // convert to number (type cast) to ensure numeric id
       });
