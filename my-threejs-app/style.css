@@ -27,6 +27,8 @@
   --ref-bg: #643a00;
   --ref-text: #cccccc;
   --border-subtle: rgba(255, 255, 255, 0.05);
+  --surface-overlay: rgba(255, 255, 255, 0.08);
+  --surface-overlay-hover: rgba(255, 130, 0, 0.45);
 
   /* Formfelder */
   --field-bg: #ffffff;
@@ -40,10 +42,12 @@
   --lh-base: 1.4;
   --fw-semibold: 600;
   --ls-tight: 0.5px;
+  --font-system: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
 
   /* Radius */
   --radius: 6px;
   --radius-sm: 4px;
+  --radius-lg: 8px;
 
   /* Spacing */
   --space-1: 4px;
@@ -58,7 +62,12 @@
   --input-max-height: 120px;
 
   /* Effekte */
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 0 8px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.25);
+
+  /* Motion */
+  --transition-quick: 0.2s ease;
 
   /* Scrollbar */
   --scrollbar-w: 8px;
@@ -223,14 +232,84 @@ body {
   cursor: not-allowed;
 }
 
+/* ---- AI toggle ---- */
+.ai-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-meta);
+  color: var(--meta-text);
+  cursor: var(--cursor-pointer);
+  user-select: none;
+}
+.ai-switch input {
+  display: none;
+}
+.ai-switch .slider {
+  position: relative;
+  width: 42px;
+  height: 22px;
+  background: var(--bubble-bg);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  transition: background var(--transition-quick);
+}
+.ai-switch .slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: var(--primary-contrast);
+  border-radius: 50%;
+  transition: transform var(--transition-quick);
+  box-shadow: var(--shadow-soft);
+}
+.ai-switch input:checked + .slider {
+  background: var(--primary);
+}
+.ai-switch input:checked + .slider::after {
+  transform: translateX(20px);
+}
+.ai-switch .switch-label {
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* ---- Chip Button ---- */
+.chip-clear-btn {
+  border: none;
+  background: var(--surface-overlay);
+  color: var(--primary-contrast);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-lg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  cursor: var(--cursor-pointer);
+  box-shadow: var(--shadow-soft);
+  transition: background var(--transition-quick), transform var(--transition-quick);
+}
+.chip-clear-btn:hover {
+  background: var(--surface-overlay-hover);
+  transform: translateY(-1px);
+}
+.chip-clear-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
 /* ---------- Marker ---------- */
 /* --- Marker-Label --- */
 marker-label {
   background: rgba(185, 99, 0, 0.5);
-  color: #000000ff;
+  color: var(--field-fg);
   padding: 6px 8px;
-  border-radius: 8px;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  border-radius: var(--radius-lg);
+  font-family: var(--font-system);
   line-height: 1.2;
   /* Breite passt sich an den Inhalt an: */
   display: inline-block;
@@ -238,7 +317,7 @@ marker-label {
   max-width: none;
   backdrop-filter: blur(1px);
   pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  box-shadow: var(--shadow-lg);
 }
 
 /* -------- Marker-Metadaten -------- */
@@ -284,11 +363,11 @@ marker-label {
   bottom: 20px;
   transform: translateX(-50%);
   background: rgba(220, 53, 69, 0.98); /* danger */
-  color: #fff;
+  color: var(--primary-contrast);
   padding: 10px 14px; /* slightly larger */
-  border-radius: 6px;
-  font: 600 16px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; /* bigger text */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius);
+  font: 600 16px var(--font-system); /* bigger text */
+  box-shadow: var(--shadow-lg);
   z-index: 2147483647;
   max-width: 80vw;
   text-align: center;
