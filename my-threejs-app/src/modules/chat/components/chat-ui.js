@@ -7,6 +7,7 @@ export const inputField = document.getElementById('input-field');
 export const referenceContainer = document.getElementById('chat-reference-container');
 export const referenceLabel = document.getElementById('chat-reference-label');
 export const clearReferenceBtn = document.getElementById('clear-reference-btn');
+export const aiToggle = /** @type {HTMLInputElement | null} */ (document.getElementById('ai-toggle'));
 
 function createReferenceChip(reference) {                // creates a clickable chip that jumps back to the 3D selection (UI chip)
   const clickableRefTag = document.createElement('div'); // container element for the chip
@@ -52,3 +53,5 @@ export function appendMessageToChat({ text, time, reference, sender }) { // rend
   chatMessages.appendChild(msgWrapper);
   chatMessages.scrollTop = chatMessages.scrollHeight;   // auto-scroll to newest message (auto-scroll)
 }
+
+

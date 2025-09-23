@@ -1,5 +1,5 @@
 // @ts-check
-import { appendMessageToChat, clearReferenceBtn, inputField, inputForm, referenceContainer, referenceLabel } from "./components/chat-ui.js";
+import { aiToggle, appendMessageToChat, clearReferenceBtn, inputField, inputForm, referenceContainer, referenceLabel } from "./components/chat-ui.js";
 // Import clearer-named helper to call /api/chat (easier to understand for beginners)
 import { handleAssistantResponse, messageHistory, pushHistoryUserMessage } from "./chat-helpers.js";
 
@@ -42,10 +42,12 @@ inputForm.addEventListener('submit', async e => {                               
   inputField.focus();
   clearComposerReference();
 
-  // Call local chat API and append assistant reply (What: talk to our /api/chat so AI can answer)
-  await handleAssistantResponse(text, userMessage);
+  // Call AI only when the toggle is enabled (keep UX simple for juniors)
+  if (aiToggle && aiToggle.checked) {
+    await handleAssistantResponse(text, userMessage);
+  }
+
 });
 
 // render saved chat history
 messageHistory.forEach(appendMessageToChat);
-

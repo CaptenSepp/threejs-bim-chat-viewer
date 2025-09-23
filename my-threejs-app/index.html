@@ -29,13 +29,26 @@
             <span id="chat-reference-label"></span>
             <button
               id="clear-reference-btn"
+              class="chip-clear-btn"
               aria-label="clear"
             >
-              X
+              &times;
             </button>
             <!-- &times means Multiplication in HTML -->
           </div>
           <!-- in Form Enter (no Shift) -->
+          <label class="ai-switch">
+            <input
+              id="ai-toggle"
+              type="checkbox"
+              checked
+            />
+            <span
+              class="slider"
+              aria-hidden="true"
+            ></span>
+            <span class="switch-label">AI Assist</span>
+          </label>
           <form id="input-form">
             <textarea
               id="input-field"
