@@ -376,3 +376,34 @@ marker-label {
   transition: opacity .15s ease;
 }
 #app-error-snackbar.visible { opacity: 1; }
+
+/* Marker overflow banner (top fixed) */
+#app-marker-banner {
+  position: fixed;
+  top: 20px;                 /* same distance from edges */
+  right: 20px;               /* move to top-right */
+  background: rgba(255, 255, 255, 0.5); /* lighter towards white, same transparency as marker (0.5) */
+  color: #000;               /* readable on light bg */
+  padding: 10px 14px;
+  border-radius: 6px;
+  font: 600 16px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 2147483647;       /* keep above */
+  max-width: 90vw;
+  pointer-events: none;      /* non-interactive */
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+#app-marker-banner.visible { opacity: 1; }
+
+/* small table reset for banner */
+.meta-table--banner {
+  border-collapse: collapse;
+}
+.meta-table--banner td {
+  padding: 2px 8px;
+  vertical-align: middle;
+}
+.meta-table--banner td:first-child {
+  opacity: 0.8; /* label column slightly dimmed */
+}

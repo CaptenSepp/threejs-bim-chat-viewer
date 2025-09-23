@@ -3,6 +3,7 @@ import { loadFragmentsFromPath } from "./core/utils.js";
 import { createViewerEngine } from "./core/viewer.js";
 import { setComposerReference } from "./modules/chat/chat.js";
 import { renderMarkerForSel, setMarker } from "./modules/target/marker.js";
+import { initMarkerVisibilityWatcher } from "./modules/target/marker-visibility.js";
 import { applySelHighlight, setRaycastEvents } from "./modules/target/raycaster.js";
 import { displayUserErrorSnackbar } from "./ui/error-notify.js";
 
@@ -42,6 +43,7 @@ async function init() { // wrap startup in async init to avoid top-level await p
   await loadFragmentsFromPath(fragments);
 
   setMarker(engineComponents);
+  initMarkerVisibilityWatcher(world); // start camera listener for banner visibility
 }
 
 // catch startup errors and show to user

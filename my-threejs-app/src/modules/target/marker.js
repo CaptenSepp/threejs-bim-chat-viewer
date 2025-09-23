@@ -1,6 +1,7 @@
 // @ts-check
 import * as ThatOpenFront from "@thatopen/components-front";                       // front helpers (Marker overlay system)
 import { getSelectionAttributes, createMarkerValues, applyMarkerLabelValues, computeMarkerWorldPosition, updateMarkerInstance } from "./marker-helpers.js";
+import { updateActiveMarkerContext, clearActiveMarkerContext } from "./marker-visibility.js";
 
 let markerServInst;                 // holds the screen-space marker service (creates/updates/deletes markers)
 let markerLabelElemTemp;            // cloned HTML element used as the marker label (DOM template instance)
@@ -18,6 +19,13 @@ export async function renderMarkerForSel(engineComponents, world, sel) {        
   applyMarkerLabelValues(markerLabelElemTemp, markerName, markerObjectType, markerTag, markerCategory, markerLocalId);
   const markerWorldPosition = computeMarkerWorldPosition(sel);
   activeMarkerInstId = updateMarkerInstance(markerServInst, activeMarkerInstId, world, markerLabelElemTemp, markerWorldPosition);
+  updateActiveMarkerContext(markerWorldPosition, {                                  // forward world position + attributes to watcher
+    name: markerName,
+    objectType: markerObjectType,
+    tag: markerTag,
+    category: markerCategory,
+    localId: markerLocalId,
+  });
   return {
     name: markerName, objectType: markerObjectType, tag: markerTag, category: markerCategory, localId: markerLocalId, // pass marker fields back for chat reference
   }
@@ -28,5 +36,6 @@ export function removeActiveMarker() {                                   // remo
     markerServInst.delete(activeMarkerInstId);                           // delete marker by its id/handle
     activeMarkerInstId = null;                                           // clear the handle
   }
+  clearActiveMarkerContext();                                            // reset visibility state and hide banner
 }
 
