@@ -28,8 +28,9 @@ async function init() { // wrap startup in async init to avoid top-level await p
   async function applySelEffects(sel) {
     applySelHighlight(engineComponents, sel);
     const markerAttributes = await renderMarkerForSel(engineComponents, world, sel); // reuse marker data
+    const localIdLabel = (markerAttributes && markerAttributes.localId) ? markerAttributes.localId : sel.itemId;
     setComposerReference({
-      label: `Item ${sel.itemId}`,
+      label: `Local ID ${localIdLabel}`,
       modelId: sel.modelId,
       itemId: sel.itemId,
       attributes: markerAttributes || null, // forward marker fields for chat
@@ -64,3 +65,4 @@ window.addEventListener('unhandledrejection', (e) => {
   const m = (r && r.message) ? r.message : String(r || 'Fehler');
   displayUserErrorSnackbar(m);
 });
+
