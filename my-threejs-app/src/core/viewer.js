@@ -27,8 +27,8 @@ export async function createViewerEngine(viewerContainer) {
   // prepare fragments manager and worker
   const fragments = engineComponents.get(TOC.FragmentsManager);
   const fragmentWorkerUrl = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
-  const workerObjectUrl = await createWorkerObjectUrl(fragmentWorkerUrl);           // hosted worker URL to parse fragments off the main thread
-  fragments.init(workerObjectUrl);                      // boot fragments with the worker (init)
+  const workerObjectUrl = await createWorkerObjectUrl(fragmentWorkerUrl);            // hosted worker URL to parse fragments off the main thread
+  fragments.init(workerObjectUrl);                                                   // boot fragments with the worker (init)
 
   // keep fragments up-to-date with camera/scene changes
   (/** @type {{ addEventListener(type: 'change' | 'update', listener: (e: unknown) => void): void }} */ (world.camera.controls)).addEventListener("change", () => fragments.core.update(true)); // recompute on camera move
