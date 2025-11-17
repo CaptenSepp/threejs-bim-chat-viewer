@@ -15,7 +15,7 @@ export function displayUserErrorSnackbar(messageText = 'Ein Fehler ist aufgetret
     ErrorSnackElem.textContent = String(messageText || '');   // set current error text (string)
     ErrorSnackElem.classList.add('visible');                  // make it visible (CSS transition)
     if (ErrorSnackTimer) clearTimeout(ErrorSnackTimer);       // clear any previous hide timer
-    ErrorSnackTimer = setTimeout(() => {                         // schedule hide
+    ErrorSnackTimer = setTimeout(() => {                      // schedule hide
       if (ErrorSnackElem) ErrorSnackElem.classList.remove('visible');
     }, durationMs);
   } catch (_) { /* no-op: never throw from notifier */ }

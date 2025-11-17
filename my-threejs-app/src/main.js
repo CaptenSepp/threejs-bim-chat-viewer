@@ -14,12 +14,12 @@ async function init() { // wrap startup in async init to avoid top-level await p
 
   const { engineComponents, world, fragments } = await createViewerEngine(viewerContainer);// creates viewer engine and scene
 
-  window.applyChatSelHighlight = sel => applySelHighlight(engineComponents, sel); // re-applies highlight in 3D scene - chat clicks in 3D
+  window.applyChatSelHighlight = sel => applySelHighlight(engineComponents, sel);          // re-applies highlight in 3D scene - chat clicks in 3D
 
-  async function fitCameraToSelBox(world, sel) {    // focuses camera on the selected area
+  async function fitCameraToSelBox(world, sel) {                // focuses camera on the selected area
     const camControls = world.camera.controls;                  // use camera controls once
-    if (sel.box) {                                        // if bounding box exists, frame it (Box3)
-      await camControls.fitToBox(sel.box, true);          // center and zoom to the box
+    if (sel.box) {                                              // if bounding box exists, frame it (Box3)
+      await camControls.fitToBox(sel.box, true);                // center and zoom to the box
       return;
     }
   }
@@ -31,9 +31,9 @@ async function init() { // wrap startup in async init to avoid top-level await p
     const localIdLabel = (markerAttributes && markerAttributes.localId) ? markerAttributes.localId : sel.itemId;
     setComposerReference({
       label: `Local ID ${localIdLabel}`,
-      modelId: sel.modelId,
+      modelId: sel.modelId, 
       itemId: sel.itemId,
-      attributes: markerAttributes || null, // forward marker fields for chat
+      attributes: markerAttributes || null,       // ???: forward marker fields for chat
     });
     // await fitCameraToSelBox(world, selection); // focus camera on selection for commented for later uses
   }

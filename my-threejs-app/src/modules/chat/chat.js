@@ -1,10 +1,8 @@
 // @ts-check
 import { aiToggle, appendMessageToChat, clearReferenceBtn, inputField, inputForm, referenceContainer, referenceLabel } from "./components/chat-ui.js";
-// Import clearer-named helper to call /api/chat (easier to understand for beginners)
 import { handleAssistantResponse, messageHistory, pushHistoryUserMessage } from "./chat-helpers.js";
 
-// state: current selection reference and history (state)
-let currentReference = null;
+let currentReference = null;                            // current selection reference and history
 
 // API
 export function setComposerReference(referenceObject) { // sets the current 3D selection as a chat reference to link a message to a picked item
@@ -19,10 +17,9 @@ export function clearComposerReference() {              // clears the current ch
   referenceContainer.classList.add('hidden');
 }
 
-// event listeners for reference chip and input
-clearReferenceBtn.addEventListener('click', clearComposerReference);
+clearReferenceBtn.addEventListener('click', clearComposerReference);// event listeners for reference chip and input
 
-inputField.addEventListener('keydown', e => { // send on Enter
+inputField.addEventListener('keydown', e => {           // send on Enter
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
     inputForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -42,12 +39,10 @@ inputForm.addEventListener('submit', async e => {                               
   inputField.focus();
   clearComposerReference();
 
-  // Call AI only when the toggle is enabled (keep UX simple for juniors)
-  if (aiToggle && aiToggle.checked) {
+  if (aiToggle && aiToggle.checked) {// Call AI only when the toggle is enabled
     await handleAssistantResponse(text, userMessage);
   }
 
 });
 
-// render saved chat history
-messageHistory.forEach(appendMessageToChat);
+messageHistory.forEach(appendMessageToChat);// render saved chat history

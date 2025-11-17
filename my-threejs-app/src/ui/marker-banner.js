@@ -1,5 +1,4 @@
 // @ts-check
-// Simple always-on-top banner
 let MarkerBannerElem = null;                                     // holds DOM element created once for the banner
 
 function ensureBannerElemExist() {                               // Ensures banner element exists and returns it

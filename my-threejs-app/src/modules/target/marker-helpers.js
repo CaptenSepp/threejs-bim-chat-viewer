@@ -5,15 +5,15 @@ export async function getSelectionAttributes(engineComponents, sel) {
   const fragmentsManager = engineComponents.get(EngineFragmentsManager);                                 // access fragment data service
 
 // fetch attributes for the selected item (attributes API -> object of key/value pairs)
-  const attributesByModel = await fragmentsManager.getData({ [sel.modelId]: [sel.itemId] }); // returns { [modelId]: [attrsForItem] }
-  const attrs = attributesByModel[sel.modelId][0];                                                 // take first (only) item attributes
+  const attributesByModel = await fragmentsManager.getData({ [sel.modelId]: [sel.itemId] });             // returns { [modelId]: [attrsForItem] }
+  const attrs = attributesByModel[sel.modelId][0];                                                       // take first (only) item attributes
   return attrs;
 }
 
 export function createMarkerValues(attrs) {
   const asPlainValue = (v) => (v && typeof v === "object" && "value" in v ? v.value : v);                // unwrap value objects to plain values (some entries are { value: X }) to normalize mixed shapes
 
-  // fill overlay fields with attributes (debug-friendly names)
+// fill overlay fields with attributes
   const markerName = asPlainValue(attrs.Name) || 'Not mentioned!';                                       // reuse marker data for prompt
   const markerObjectType = asPlainValue(attrs.ObjectType) || 'Not mentioned!';
   const markerTag = asPlainValue(attrs.Tag) || 'Not mentioned!';
@@ -32,7 +32,7 @@ export function applyMarkerLabelValues(markerLabelElemTemp, markerName, markerOb
 
 export function computeMarkerWorldPosition(sel) {
   // place marker slightly above the selection (position = Vector3 in world space)
-  const markerWorldPosition = sel.center.clone();                  // clone center (avoid mutating selection.center)
+  const markerWorldPosition = sel.center.clone();                        // clone center (avoid mutating selection.center)
   markerWorldPosition.y += 6;                                            // offset in meters
   return markerWorldPosition;
 }
