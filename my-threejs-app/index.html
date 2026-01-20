@@ -22,33 +22,38 @@
         <div id="chat-header">Chat</div>
         <div id="chat-messages"></div>
         <div id="chat-input">
-          <div
-            id="chat-reference-container"
-            class="hidden"
-          >
-            <span id="chat-reference-label"></span>
-            <button
-              id="clear-reference-btn"
-              class="chip-clear-btn"
-              aria-label="clear"
+          <div id="chat-controls">
+            <div
+              id="chat-reference-container"
+              class="hidden"
             >
-              &times;
-            </button>
-            <!-- &times means Multiplication in HTML -->
+              <button
+                id="clear-reference-btn"
+                class="chip-clear-btn"
+                aria-label="clear"
+              >
+                &times;
+              </button>
+              <!-- &times means Multiplication in HTML -->
+              <span id="chat-reference-label"></span>
+            </div>
+            <!-- in Form Enter (no Shift) -->
+            <label class="ai-switch">
+              <span class="switch-label">
+                <span class="switch-label-short">AI</span>
+                <span class="switch-label-long">AI Switch</span>
+              </span>
+              <input
+                id="ai-toggle"
+                type="checkbox"
+                checked
+              />
+              <span
+                class="slider"
+                aria-hidden="true"
+              ></span>
+            </label>
           </div>
-          <!-- in Form Enter (no Shift) -->
-          <label class="ai-switch">
-            <input
-              id="ai-toggle"
-              type="checkbox"
-              checked
-            />
-            <span
-              class="slider"
-              aria-hidden="true"
-            ></span>
-            <span class="switch-label">AI Switch</span>
-          </label>
           <form id="input-form">
             <textarea
               id="input-field"

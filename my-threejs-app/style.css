@@ -197,6 +197,32 @@ body {
   background: var(--chat-input-bg);
   border-top: 1px solid var(--border-subtle);
 }
+#chat-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+#chat-reference-container {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+}
+#chat-reference-label {
+  font-size: var(--fs-ref);
+  color: var(--ref-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#chat-controls .ai-switch {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.hidden {
+  display: none !important;
+}
 #input-form {
   display: flex;
   gap: var(--space-2);
@@ -276,6 +302,17 @@ body {
   font-weight: var(--fw-semibold);
   text-transform: uppercase;
   letter-spacing: 0.8px;
+}
+.ai-switch .switch-label-short {
+  display: none;
+}
+@media (max-width: 480px) {
+  .ai-switch .switch-label-long {
+    display: none;
+  }
+  .ai-switch .switch-label-short {
+    display: inline;
+  }
 }
 
 /* ---- Chip Button ---- */
