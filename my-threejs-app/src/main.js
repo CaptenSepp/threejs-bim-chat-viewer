@@ -1,5 +1,5 @@
 // @ts-check
-import { loadFragmentsFromPath } from "./core/utils.js";
+import { loadModelAutoDetect } from "./core/utils.js";              // load IFC or FRAG on startup
 import { createViewerEngine } from "./core/viewer.js";
 import { setComposerReference } from "./modules/chat/chat.js";
 import { renderMarkerForSel, setMarker } from "./modules/target/marker.js";
@@ -40,8 +40,9 @@ async function init() { // wrap startup in async init to avoid top-level await p
 
   setRaycastEvents(engineComponents, world, applySelEffects);
 
-  // loads fragments and prepares marker overlay (initialization)
-  await loadFragmentsFromPath(fragments);
+  // loads IFC or FRAG and prepares marker overlay (initialization)
+  await loadModelAutoDetect(engineComponents, fragments, "/model/custom_psets.ifc");
+  // await loadModelFromPath(engineComponents, fragments, "/fragments/school_str.frag");
 
   setMarker(engineComponents);
   initMarkerVisibilityWatcher(world); // start camera listener for banner visibility

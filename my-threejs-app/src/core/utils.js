@@ -35,6 +35,39 @@ export async function loadFragmentsFromPath(fragments, path = "/fragments/school
   }
 }
 
+export async function loadIfcFromPath(components, path = "/model/custom_psets.ifc") { // default IFC -> FRAG (online wasm)
+  try {
+    const file = await fetchOrThrow(path, 'Failed to fetch IFC at');
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);                           // convert to bytes for IfcLoader
+    const ifcLoader = components.get(IfcLoader);                    // get IFC loader from engine
+    await ifcLoader.setup({                                         // pin wasm CDN to avoid autoSetWasm fetch
+      autoSetWasm: false,
+      wasm: { path: "https://unpkg.com/web-ifc@0.0.70/", absolute: true },
+    });
+    const normalizedPath = path.replace(/\\/g, '/');                // normalize slashes for model id
+    const trimmedPath = normalizedPath.replace(/^\/+/, '');         // drop leading slashes
+    let modelId = trimmedPath || 'model';                           // stable id from path
+    const fileTail = modelId.split('/').pop() || modelId;           // last segment
+    modelId = fileTail.replace(/\.ifc$/i, '') || fileTail;          // drop .ifc extension
+    await ifcLoader.load(bytes, true, modelId);                     // convert IFC -> FRAG and load
+  } catch (error) {
+    console.error(`Error loading IFC from ${path}:`, error);
+    displayUserErrorSnackbar(`IFC konnte nicht geladen werden: ${path}`);
+  }
+}
+
+export async function loadModelAutoDetect(components, fragments, path) {            // choose IFC or FRAG by extension
+  const safePath = String(path || '').trim();
+  if (!safePath || safePath.toLowerCase().endsWith('.frag')) {
+    return loadFragmentsFromPath(fragments, safePath || undefined);
+  }
+  if (safePath.toLowerCase().endsWith('.ifc')) {
+    return loadIfcFromPath(components, safePath);
+  }
+  displayUserErrorSnackbar(`Unbekannter Dateityp: ${safePath || path}`);
+}
+
 export function escapeHTML(str) {        // replaces special characters with HTML-safe entities (escaping)
   const s = String(str ?? 'undefined!'); // avoid undefined/null issues
   return s.replace(/[&<>"']/g, m => ({
@@ -45,5 +78,6 @@ export function escapeHTML(str) {        // replaces special characters with HTM
     "'": '&#039;',
   }[m]));
 }
+import { IfcLoader } from "@thatopen/components";
 import { displayUserErrorSnackbar } from "../ui/error-notify.js";
 
