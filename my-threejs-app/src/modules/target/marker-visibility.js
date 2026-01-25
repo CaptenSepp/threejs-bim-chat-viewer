@@ -1,5 +1,5 @@
 // @ts-check
-import { displayMarkerOverflowBanner, hideMarkerOverflowBanner } from "../../ui/marker-banner.js";
+import { displayOffscreenBanner, hideOffscreenBanner } from "../../ui/marker-banner.js";
 import { applyMarkerLabelValues } from "./marker-helpers.js";
 
 let activeMarkerWorldPos = null;                                              // current marker world position to project and test visibility
@@ -29,7 +29,7 @@ export function updateActiveMarkerContext(markerWorldPos, markerAttrs) {   // Up
 export function clearActiveMarkerContext() {                               // Clear when marker is removed (e.g., ESC)
   activeMarkerWorldPos = null;                                             // no target = nothing to track
   activeMarkerAttrs = null;                                                // clear cached data so banner won’t show stale info
-  hideMarkerOverflowBanner();                                              // proactively hide the banner
+  hideOffscreenBanner();                                              // proactively hide the banner
 }
 
 function onCameraChange() {
@@ -38,15 +38,15 @@ function onCameraChange() {
 
 function recalcAndToggleBanner() {                                            // central place: compute visibility and toggle UI
   if (!activeMarkerWorldPos || !cameraThree) {                                // nothing to check or no camera available
-    hideMarkerOverflowBanner();                                               // hide to avoid showing an empty banner
+    hideOffscreenBanner();                                               // hide to avoid showing an empty banner
     return;                                                                   // and exit
   }
   const visible = isWorldPosInView(activeMarkerWorldPos, cameraThree);        // true if world position projects inside the screen
   if (!visible && activeMarkerAttrs) {                                        // only show when not visible and we have data to show
     const html = buildBannerHtml(activeMarkerAttrs);                          // build a small table from the template
-    displayMarkerOverflowBanner(html);                                        // show top-right banner
+    displayOffscreenBanner(html);                                        // show top-right banner
   } else {
-    hideMarkerOverflowBanner();                                               // otherwise hide
+    hideOffscreenBanner();                                               // otherwise hide
   }
 }
 
