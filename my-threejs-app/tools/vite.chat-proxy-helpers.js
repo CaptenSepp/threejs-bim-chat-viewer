@@ -20,7 +20,11 @@ export function buildPromptData(requestBody) {
 }
 
 export function getGoogleModels() {
-  return (process.env.GOOGLE_MODELS || 'gemini-1.5-flash,gemini-1.5-pro').split(',').map(s => s.trim()).filter(Boolean);
+  return (process.env.GOOGLE_MODELS
+    || 'gemini-2.5-flash,gemini-2.5-pro,gemini-flash-latest,gemini-pro-latest')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
 }
 
 export async function fetchAssistantReplyText(googleModels, promptText, openAiApiKey) {
@@ -39,7 +43,7 @@ export async function fetchAssistantReplyText(googleModels, promptText, openAiAp
         contents: [                                                   // conversation messages
           { role: 'user', parts: [{ text: promptText }] },            // system instruction
         ],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 100 }, // cap output length 
+        generationConfig: { temperature: 0.3, maxOutputTokens: 500 }, // cap output length 
       }),
     });
 
@@ -48,6 +52,10 @@ export async function fetchAssistantReplyText(googleModels, promptText, openAiAp
       assistantReplyText = openAiResponseJson?.candidates?.[0]?.content?.parts?.[0]?.text?.toString?.().trim?.() || ''; // extract assistant reply text (empty string for safe fallback)
       break; // success
     }
+
+    // Log upstream error details to help diagnose model/key issues
+    console.log('Upstream status', openAiHttpResponse.status);
+    console.log('Upstream body', await openAiHttpResponse.text());
 
     if (![429, 403, 503].includes(openAiHttpResponse.status)) break;  // non-quota error -> stop
   }
