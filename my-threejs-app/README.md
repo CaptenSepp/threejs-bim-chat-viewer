@@ -1,34 +1,56 @@
-IFC Chat Viewer
+# IFC Chat Viewer (Prototyp)
 
-A browser-based Three.js prototype that lets you inspect IFC models and start chat threads that target specific building elements. It uses @thatopen components and web-ifc fragments to stream BIM data efficiently.
+Dies ist ein kleines Uni-Projekt, mit dem sich IFC-Modelle im Browser mit Three.js betrachten lassen.  
+Man kann Bauteile anklicken und im Viewer hervorheben sowie den Chat mit Bezug auf das ausgewählte Element nutzen.
 
-#Features
-- Loads IFC fragment data and renders it with a Three.js scene configured for BIM navigation.
-- Raycasts model geometry to highlight the selected element and drop a marker overlay.
-- Sends selection context (model ID, local ID, attributes) to the chat composer for follow-up discussions.
-- Shows inline error notifications when viewer or data loading fails.
+## Was das Projekt kann
 
-#Prerequisites
-- Node.js 18 or newer (ships with npm). Check with `node -v`.
+- Rendert BIM-Daten mit `@thatopen/components` und Fragment-Support.
+- Lädt sowohl `.ifc` als auch `.frag` Dateien (automatische Erkennung über die Dateiendung).
+- Ermöglicht Auswahl per Raycasting und hebt das gewählte Element in der Szene hervor.
+- Zeigt einen Marker/Banner für ausgewählte Elemente.
+- Übergibt die Selektionsdaten (`modelId`, `itemId`, Attribute) an den Chat-Composer.
+- Speichert den Chatverlauf im `localStorage`.
+- Zeigt Snackbar-Fehlermeldungen bei Ladefehlern oder Laufzeitfehlern.
 
-#Getting Started
-1. Install dependencies: `npm install`
-2. Start the Vite dev server: `npm run dev`
-   - The app defaults to http://localhost:5173
-   - Sample IFC and fragment files live under `public/model` and `public/fragments`
+## Voraussetzungen
 
-#Useful Scripts
-- `npm run dev` � hot-reload development server.
-- `npm run test` � run the Vitest unit suite once.
-- `npm run test:watch` � re-run tests on file changes.
-- `npm run typecheck` � verify TypeScript types without emitting JS.
+- Node.js 18+
 
-#Project Layout
-- `src/core` � viewer bootstrap, Three.js engine setup, and loading helpers.
-- `src/modules` � feature modules (chat integration, selection markers, raycasting).
-- `src/ui` � small UI utilities such as snackbars for error feedback.
-- `public/` � static assets, including the sample IFC models and fragment caches.
+Version prüfen:
+node -v
 
-#Next Steps
-- Replace the sample IFC files with project-specific data by dropping new files into `public/model`.
-- Extend the chat module to hit your backend API for persistent discussions.
+## Setup und Start
+
+npm install
+npm run dev
+Vite startet normalerweise unter `http://localhost:5173`.
+
+## Skripte
+
+- `npm run dev` - startet den Vite-Dev-Server.
+- `npm run test` - führt die Vitest-Tests aus.
+- `npm run test:watch` - startet Tests im Watch-Modus.
+- `npm run typecheck` - führt den TypeScript-Typecheck aus (`tsc --noEmit`).
+
+## Projektstruktur
+
+- `src/main.js` - App-Start und Verbindung von Viewer, Selektion, Marker und Chat.
+- `src/core` - Setup der Viewer-Engine und Model-Loading-Helfer.
+- `src/modules/chat` - Chat-UI, Nachrichtenverlauf, Assistant-Request-Ablauf.
+- `src/modules/target` - Raycasting, Highlighting und Marker-Verhalten.
+- `src/api` und `src/services` - API-Aufruf und gemeinsamer HTTP-Helper.
+- `src/ui` - UI-Helfer (Error-Snackbar, Marker-Banner).
+- `public/model` - Beispiel-IFC-Dateien.
+- `public/fragments` - Beispiel-Fragment-Dateien.
+- `tests` - Unit-Tests (chat, raycaster, utils).
+
+## Hinweise zum AI-Chat
+
+Der Dev-API-Endpunkt ist `/api/assistant-reply` (über das Vite-Plugin in `tools/vite.chat-proxy.js`).
+Damit Assistant-Antworten in der Entwicklung funktionieren, muss API-Key manuell gesetzt werden.
+
+## Schnell anpassen
+
+- Um ein anderes Modell standardmässig zu laden, den Pfad in `loadModelAutoDetect(...)` in `src/main.js` ändern.
+- Eigene IFC-/Fragment-Dateien in `public/model` oder `public/fragments` ablegen und in `src/main.js` referenzieren.
