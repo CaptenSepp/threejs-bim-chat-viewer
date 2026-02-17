@@ -16,4 +16,9 @@ Thumbs.db
 
 # Environment variables
 .env
+.env.*
 .vscode/extensions.json
+
+# Vercel/Netlify metadata
+.vercel
+.netlify

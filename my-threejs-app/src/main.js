@@ -1,64 +1,69 @@
-import * as TOC from "@thatopen/components";                                 // Klassen wie Components, Worlds, SimpleScene etc.
-import { setReference } from "./chat.js";                                    // Kopplung 3D-Selektion ↔ Chat
-import { highlightSelection, initRaycaster } from "./raycaster.js";
-import { getWorkerUrl, loadFragments } from "./utils.js";
+// @ts-check
+import { loadModelAutoDetect } from "./core/utils.js";              // load IFC or FRAG on startup
+import { createViewerEngine } from "./core/viewer.js";
+import { setComposerReference } from "./modules/chat/chat.js";
+import { renderMarkerForSel, setMarker } from "./modules/target/marker.js";
+import { initMarkerVisibilityWatcher } from "./modules/target/marker-visibility.js";
+import { applySelHighlight, setRaycastEvents } from "./modules/target/raycaster.js";
+import { displayUserErrorSnackbar } from "./ui/error-notify.js";
 
-const fragmentWorkerUrl = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
 const viewerContainer = document.getElementById("three-canvas");
 
-// Core logic
-const engineComponents = new TOC.Components();                               // Zentrales Service-Registry-Objekt der Engine
-window.highlightFromChat = sel => highlightSelection(engineComponents, sel); // Re-highlights im 3D
 
-const worlds = engineComponents.get(TOC.Worlds);
-const world = worlds.create();
-world.scene = new TOC.SimpleScene(engineComponents);
-world.scene.setup();
-world.scene.three.background = null;
-world.renderer = new TOC.SimpleRenderer(engineComponents, viewerContainer);
-world.camera = new TOC.OrthoPerspectiveCamera(engineComponents);
-await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25);
+async function init() { // wrap startup in async init to avoid top-level await parse issues
 
-engineComponents.init();
-engineComponents.get(TOC.Grids).create(world);
+  const { engineComponents, world, fragments } = await createViewerEngine(viewerContainer);// creates viewer engine and scene
 
-// Model laden
-const fragmentManager = engineComponents.get(TOC.FragmentsManager);
-const workerObjectUrl = await getWorkerUrl(fragmentWorkerUrl);
-fragmentManager.init(workerObjectUrl);
+  window.applyChatSelHighlight = sel => applySelHighlight(engineComponents, sel);          // re-applies highlight in 3D scene - chat clicks in 3D
 
-// Event handlers
-function handleRaycastSelection(selection) {
-  highlightSelection(engineComponents, selection);
-  setReference({
-    label: `Item ${selection.itemId}`,
-    modelId: selection.modelId,
-    itemId: selection.itemId,
-  });
-}
-
-initRaycaster(engineComponents, world, handleRaycastSelection);
-
-world.camera.controls.addEventListener("change", () => fragmentManager.core.update(true)); // position ändert sich "change"
-
-fragmentManager.list.onItemSet.add(({ value: model }) => { // fragmentManager.list = aller geladenen Fragment-Modelle (Key: modelId, Value: model-Objekt
-  model.useCamera(world.camera.three);                     // Verdrahtet  internen Shader/States des Modells mit Kamera‑Instanz
-  world.scene.three.add(model.object);                     // Fügt das geladene 3D-Objekt in die Three.js-Szene ein
-  fragmentManager.core.update(true);                       // Re-Render
-});
-
-// Initialization
-await loadFragments(fragmentManager);
-let isRendering = true;
-
-function renderFrame() {
-  if (isRendering) {
-    world.renderer.render();
+  async function fitCameraToSelBox(world, sel) {                // focuses camera on the selected area
+    const camControls = world.camera.controls;                  // use camera controls once
+    if (sel.box) {                                              // if bounding box exists, frame it (Box3)
+      await camControls.fitToBox(sel.box, true);                // center and zoom to the box
+      return;
+    }
   }
+
+  // handles a resolved selection: highlight, chat, marker, camera
+  async function applySelEffects(sel) {
+    applySelHighlight(engineComponents, sel);
+    const markerAttributes = await renderMarkerForSel(engineComponents, world, sel); // reuse marker data
+    const localIdLabel = (markerAttributes && markerAttributes.localId) ? markerAttributes.localId : sel.itemId;
+    setComposerReference({
+      label: `Local ID ${localIdLabel}`,
+      modelId: sel.modelId, 
+      itemId: sel.itemId,
+      attributes: markerAttributes || null,       // ???: forward marker fields for chat
+    });
+    // await fitCameraToSelBox(world, selection); // focus camera on selection for commented for later uses
+  }
+
+  setRaycastEvents(engineComponents, world, applySelEffects);
+
+  // loads IFC or FRAG and prepares marker overlay (initialization)
+  // await loadModelAutoDetect(engineComponents, fragments, "/model/custom_psets.ifc");
+  await loadModelAutoDetect(engineComponents, fragments, "/fragments/school_str.frag");
+
+  setMarker(engineComponents);
+  initMarkerVisibilityWatcher(world); // start camera listener for banner visibility
 }
 
-world.renderer.setAnimationLoop(renderFrame);
-
-document.addEventListener("visibilitychange", () => {
-  isRendering = !document.hidden;
+// catch startup errors and show to user
+init().catch(err => {
+  const msg = (err && err.message) ? err.message : String(err || 'Fehler');
+  displayUserErrorSnackbar(msg);
 });
+
+// global wiring for runtime errors
+window.addEventListener('error', (e) => {
+  if (!e) return;
+  const m = (e.error && e.error.message) || e.message || 'Fehler';
+  displayUserErrorSnackbar(m);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  if (!e) return;
+  const r = e.reason;
+  const m = (r && r.message) ? r.message : String(r || 'Fehler');
+  displayUserErrorSnackbar(m);
+});
+

@@ -1,11 +1,12 @@
 /* ---------- Global Box-Sizing ---------- */
+
 *,
 *::before,
 *::after {
-  box-sizing: border-box; /* Breite/Höhe inkl. Padding & Border */ 
+  box-sizing: border-box; /* Breite/Hohe inkl. Padding & Border */ 
 }
 
-/* ---------- Design-Variablen ---------- */
+/* ---------- Design-Variables ---------- */
 :root {
   /* Layout */
   --chat-width: 320px;
@@ -21,11 +22,13 @@
   --bubble-bg: #2c2c2c;
   --scroll-thumb: #444444;
 
-  /* Zusätzliche Farben für Elemente */
+  /* Zusatzliche Farben fur Elemente */
   --meta-text: #9d9d9d;
   --ref-bg: #643a00;
   --ref-text: #cccccc;
   --border-subtle: rgba(255, 255, 255, 0.05);
+  --surface-overlay: rgba(255, 255, 255, 0.08);
+  --surface-overlay-hover: rgba(255, 130, 0, 0.45);
 
   /* Formfelder */
   --field-bg: #ffffff;
@@ -39,10 +42,12 @@
   --lh-base: 1.4;
   --fw-semibold: 600;
   --ls-tight: 0.5px;
+  --font-system: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
 
   /* Radius */
   --radius: 6px;
   --radius-sm: 4px;
+  --radius-lg: 8px;
 
   /* Spacing */
   --space-1: 4px;
@@ -52,12 +57,17 @@
   --space-3-5: 14px;
   --space-4: 16px;
 
-  /* Input-Höhen */
+  /* Input-Hohen */
   --input-min-height: 40px;
   --input-max-height: 120px;
 
   /* Effekte */
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 0 8px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.25);
+
+  /* Motion */
+  --transition-quick: 0.2s ease;
 
   /* Scrollbar */
   --scrollbar-w: 8px;
@@ -81,6 +91,10 @@ body {
   background: var(--bg);
   color: var(--text);
 }
+
+/* ---------- App Layout ---------- */
+
+
 #app-container {
   display: flex;
   height: 100vh;
@@ -95,7 +109,7 @@ body {
   cursor: var(--cursor-pointer);
 }
 
-/* ---------- Chat-Sidebar ---------- */
+/* ---------- Chat ---------- */
 #chat-container {
   display: flex;
   flex-direction: column;
@@ -134,7 +148,7 @@ body {
   align-items: flex-start;
 }
 
-/* !!!: beter organize the stylings*/
+/* !!!: better organize the stylings*/
 .message {  
   background: var(--bubble-bg);
   padding: var(--space-2) var(--space-2-5);
@@ -183,6 +197,32 @@ body {
   background: var(--chat-input-bg);
   border-top: 1px solid var(--border-subtle);
 }
+#chat-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+#chat-reference-container {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+}
+#chat-reference-label {
+  font-size: var(--fs-ref);
+  color: var(--ref-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#chat-controls .ai-switch {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.hidden {
+  display: none !important;
+}
 #input-form {
   display: flex;
   gap: var(--space-2);
@@ -218,6 +258,120 @@ body {
   cursor: not-allowed;
 }
 
+/* ---- AI toggle ---- */
+.ai-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-meta);
+  color: var(--meta-text);
+  cursor: var(--cursor-pointer);
+  user-select: none;
+}
+.ai-switch input {
+  display: none;
+}
+.ai-switch .slider {
+  position: relative;
+  width: 42px;
+  height: 22px;
+  background: var(--bubble-bg);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  transition: background var(--transition-quick);
+}
+.ai-switch .slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: var(--primary-contrast);
+  border-radius: 50%;
+  transition: transform var(--transition-quick);
+  box-shadow: var(--shadow-soft);
+}
+.ai-switch input:checked + .slider {
+  background: var(--primary);
+}
+.ai-switch input:checked + .slider::after {
+  transform: translateX(20px);
+}
+.ai-switch .switch-label {
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.ai-switch .switch-label-short {
+  display: none;
+}
+@media (max-width: 480px) {
+  .ai-switch .switch-label-long {
+    display: none;
+  }
+  .ai-switch .switch-label-short {
+    display: inline;
+  }
+}
+
+/* ---- Chip Button ---- */
+.chip-clear-btn {
+  border: none;
+  background: var(--surface-overlay);
+  color: var(--primary-contrast);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-lg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  cursor: var(--cursor-pointer);
+  box-shadow: var(--shadow-soft);
+  transition: background var(--transition-quick), transform var(--transition-quick);
+}
+.chip-clear-btn:hover {
+  background: var(--surface-overlay-hover);
+  transform: translateY(-1px);
+}
+.chip-clear-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+/* ---------- Marker ---------- */
+/* --- Marker-Label --- */
+marker-label {
+  background: rgba(185, 99, 0, 0.5);
+  color: var(--field-fg);
+  padding: 6px 8px;
+  border-radius: var(--radius-lg);
+  font-family: var(--font-system);
+  line-height: 1.2;
+  /* Breite passt sich an den Inhalt an: */
+  display: inline-block;
+  width: max-content;
+  max-width: none;
+  backdrop-filter: blur(1px);
+  pointer-events: none;
+  box-shadow: var(--shadow-lg);
+}
+
+/* -------- Marker-Metadaten -------- */
+.meta-wrap {
+  display: inline-block;
+  width: max-content;
+}
+
+.meta-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  width: max-content;
+}
+
+.meta-table td { padding: 2px 6px; }
+.meta-table td:first-child { font-weight: 600; opacity: 0.9; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 768px) {
   #app-container {
@@ -236,4 +390,57 @@ body {
     height: auto;
     min-height: var(--input-min-height);
   }
+  
+}
+
+/* Error snackbar styling */
+#app-error-snackbar {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  background: rgba(220, 53, 69, 0.98); /* danger */
+  color: var(--primary-contrast);
+  padding: 10px 14px; /* slightly larger */
+  border-radius: var(--radius);
+  font: 600 16px var(--font-system); /* bigger text */
+  box-shadow: var(--shadow-lg);
+  z-index: 2147483647;
+  max-width: 80vw;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+#app-error-snackbar.visible { opacity: 1; }
+
+/* Marker overflow banner (top fixed) */
+#app-marker-banner {
+  position: fixed;
+  top: 20px;                 /* same distance from edges */
+  right: 20px;               /* move to top-right */
+  background: rgba(255, 255, 255, 0.5); /* lighter towards white, same transparency as marker (0.5) */
+  color: #000;               /* readable on light bg */
+  padding: 10px 14px;
+  border-radius: 6px;
+  font: 600 16px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 2147483647;       /* keep above */
+  max-width: 90vw;
+  pointer-events: none;      /* non-interactive */
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+#app-marker-banner.visible { opacity: 1; }
+
+/* small table reset for banner */
+.meta-table--banner {
+  border-collapse: collapse;
+}
+.meta-table--banner td {
+  padding: 2px 8px;
+  vertical-align: middle;
+}
+.meta-table--banner td:first-child {
+  opacity: 0.8; /* label column slightly dimmed */
 }
