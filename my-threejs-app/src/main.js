@@ -42,7 +42,7 @@ async function init() { // wrap startup in async init to avoid top-level await p
 
   // loads IFC or FRAG and prepares marker overlay (initialization)
   // await loadModelAutoDetect(engineComponents, fragments, "/model/custom_psets.ifc");
-  await loadModelAutoDetect(engineComponents, fragments, "/fragments/school_str.frrag");
+  await loadModelAutoDetect(engineComponents, fragments, "/fragments/school_str.frag");
 
   setMarker(engineComponents);
   initMarkerVisibilityWatcher(world); // start camera listener for banner visibility
