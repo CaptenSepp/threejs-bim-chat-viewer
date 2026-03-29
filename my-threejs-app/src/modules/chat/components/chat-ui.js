@@ -26,7 +26,7 @@ function createReferenceChip(reference) {                // creates a clickable 
   return clickableRefTag;
 }
 
-export function appendMessageToChat({ text, time, reference, sender }) { // renders a message in the chat (DOM update)
+export function appendMessageToChat({ text, time, reference, sender }, { historyIndex = null } = {}) { // renders a message in the chat (DOM update)
   const msgWrapper = document.createElement('div');       // build wrapper and mark as self (message DOM) to style it as the sender
   const isSelf = sender ? sender === 'user' : true;       // decide side based on sender (default user/self for backwards-compat)
   msgWrapper.classList.add('message-wrapper');
@@ -34,12 +34,43 @@ export function appendMessageToChat({ text, time, reference, sender }) { // rend
 
   if (reference && reference.label) {                     // if reference exists, show chip (context link) to associate the message with a selection
     const ref = createReferenceChip(reference);           // reuse builder to keep DOM consistent
-    msgWrapper.appendChild(ref);                          // place chip above the message (layout)
+    msgWrapper.appendChild(ref);                          // place chip above the message (generation a clickable UI element in layout)
   }
 
   const chatMsgContainer = document.createElement('div');
   chatMsgContainer.classList.add('message');
   chatMsgContainer.innerHTML = escapeHTML(text);          // escape user text before inserting (XSS protection)
+
+  const messageControls = document.createElement('div');                               // top-right controls inside each message bubble
+  messageControls.classList.add('message__controls');
+
+  const selectButton = document.createElement('button');                               // circle selection button
+  selectButton.classList.add('message__select-btn');
+  selectButton.type = 'button';
+  selectButton.setAttribute('aria-label', 'Select message');
+  selectButton.setAttribute('aria-pressed', 'false');
+
+  const deleteButton = document.createElement('button');                               // trash bin delete button
+  deleteButton.classList.add('message__delete-btn');
+  deleteButton.type = 'button';
+  deleteButton.textContent = '🗑️';
+  deleteButton.setAttribute('aria-label', 'Delete message');
+  deleteButton.addEventListener('click', () => {                                       // click asks browser confirmation first
+    const isDeleteConfirmed = window.confirm('Are you sure you want to delete this message?');
+    if (!isDeleteConfirmed || !Number.isInteger(historyIndex)) return;                 // stop when canceled or index is missing
+    chatMessages.dispatchEvent(new CustomEvent('chat-message-delete', {
+      detail: { historyIndex },                                                         // send exact history index to chat.js
+    }));
+  });
+
+  selectButton.addEventListener('click', () => {                                       // toggle selected state for this bubble
+    const isSelected = chatMsgContainer.classList.toggle('message--selected');
+    selectButton.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+  });
+
+  messageControls.appendChild(deleteButton);
+  messageControls.appendChild(selectButton);
+  chatMsgContainer.appendChild(messageControls);
 
   const chatMeta = document.createElement('div');
   chatMeta.classList.add('meta');

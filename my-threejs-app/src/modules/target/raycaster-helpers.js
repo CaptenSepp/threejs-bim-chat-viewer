@@ -22,10 +22,10 @@ async function buildSelFromRayHit(engineComponents, rayHit) {             // bui
 
 export async function handleCanvasClick(event, engineComponents, raycaster, applySelEffects) {
   raycaster.mouse.updateMouseInfo(event);                                 // lines up the laser with the mouse point
-  const rayHit = await raycaster.castRay();                               // cast a ray and wait for a hit
+  const rayHit = await raycaster.castRay();                               // cast a ray and wait for a hit (Important: internally a lot of things happen which result in paring each hit to exact locaId of the selected element)
 
   if (rayHit) {
-    const sel = await buildSelFromRayHit(engineComponents, rayHit);       // build selection data from the hit to include ids and bBox
+        const sel = await buildSelFromRayHit(engineComponents, rayHit);       // build selection data from the hit to include ids and bBox
     applySelEffects(sel);                                                 // hand selection to caller for effects (callback)
     return;
   }

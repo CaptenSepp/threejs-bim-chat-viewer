@@ -6,7 +6,7 @@
 
 export async function requestAssistantReplyForUserMessage({ userMessageText, previousChatHistory = [], selectedModelReference = null }) {
   // use shared client helper for JSON POST (standard headers, error handling, snackbar)
-  const { postReqWithJson: postJson } = await import('../services/http-client.js'); // import ony and when we need it
+  const { postReqWithJson: postJson } = await import('../services/http-client.js'); // import only and when we need it
   const data = await postJson('/api/assistant-reply', {                 // Send request to our API endpoint (dev proxy (or prod function)); insdie: fetch('/api/assistant-reply', { method: 'POST', … })
     message: userMessageText,                                           // The actual text the user typed
     history: previousChatHistory,                                       // short history of the chat

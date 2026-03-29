@@ -158,6 +158,8 @@ body {
   word-break: break-word;
   max-width: 85%;
   white-space: pre-line;
+  position: relative;
+  padding-right: 58px;
 }
 .message-wrapper.self {
   align-items: flex-end;
@@ -170,6 +172,47 @@ body {
   margin-top: 2px;
   font-size: var(--fs-meta);
   color: var(--meta-text);
+}
+.message__controls {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.message__select-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  background: transparent;
+  cursor: var(--cursor-pointer);
+}
+.message--selected .message__select-btn {
+  background: var(--primary);
+}
+.message-wrapper.self .message__select-btn {
+  border-color: #000;
+}
+.message-wrapper.self .message.message--selected .message__select-btn {
+  background: #000;
+}
+.message__delete-btn {
+  display: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0;
+  cursor: var(--cursor-pointer);
+}
+.message--selected .message__delete-btn {
+  display: inline-flex;
+}
+.message__delete-btn:hover {
+  opacity: 0.85;
 }
 
 .message-reference {

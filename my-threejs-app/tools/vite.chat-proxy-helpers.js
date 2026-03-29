@@ -43,7 +43,7 @@ export async function fetchAssistantReplyText(googleModels, promptText, openAiAp
         contents: [                                                   // conversation messages
           { role: 'user', parts: [{ text: promptText }] },            // system instruction
         ],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 500 }, // cap output length 
+        generationConfig: { temperature: 0.3, maxOutputTokens: 600 }, // cap output length 
       }),
     });
 

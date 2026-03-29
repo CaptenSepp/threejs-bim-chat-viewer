@@ -23,7 +23,7 @@ export function createMarkerValues(attrs) {
 }
 
 export function applyMarkerLabelValues(markerLabelElemTemp, markerName, markerObjectType, markerTag, markerCategory, markerLocalId) {
-  markerLabelElemTemp.querySelector(".val-name").textContent = markerName;
+  markerLabelElemTemp.querySelector(".val-name").textContent = markerName;  // chaning values directly into html template node
   markerLabelElemTemp.querySelector(".val-objecttype").textContent = markerObjectType;
   markerLabelElemTemp.querySelector(".val-tag").textContent = markerTag;
   markerLabelElemTemp.querySelector(".val-category").textContent = markerCategory;

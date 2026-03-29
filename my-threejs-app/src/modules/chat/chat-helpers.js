@@ -9,20 +9,32 @@ export const messageHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[
 
 export function pushHistoryUserMessage(userMessage) {
   messageHistory.push(userMessage);
+  const historyIndex = messageHistory.length - 1;                   // capture index of the newly stored message
   localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Push (Persist) to local storage to restore chat after reload
-  appendMessageToChat(userMessage);                                  // Render user message
+  appendMessageToChat(userMessage, { historyIndex });                // Render user message with delete target index
+}
+
+export function removeHistoryMessageByIndex(historyIndex) {
+  const isIndexValid = Number.isInteger(historyIndex) && historyIndex >= 0 && historyIndex < messageHistory.length;
+  if (!isIndexValid) return false;                                   // stop when the selected index does not exist
+
+  messageHistory.splice(historyIndex, 1);                            // remove the selected message only
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // keep storage in sync with the array
+  return true;                                                       // report that one selected message was removed
 }
 
 function pushAssistantMessage(assistantMessage) {
   messageHistory.push(assistantMessage);                             // Save assistant message to in-memory array
+  const historyIndex = messageHistory.length - 1;                   // capture index to enable per-message deletion
   localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist updated chat with the AI reply
-  appendMessageToChat(assistantMessage);                             // Show the AI answer in the chat UI
+  appendMessageToChat(assistantMessage, { historyIndex });           // Show the AI answer in the chat UI
 }
 
 function pushErrorMessage(errMsg) {
   messageHistory.push(errMsg);                                       // Store the error message in history (state)
+  const historyIndex = messageHistory.length - 1;                   // capture index to enable per-message deletion
   localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist the error in localStorage (persistence)
-  appendMessageToChat(errMsg);                                       // Show the error in the chat so the user knows (feedback)
+  appendMessageToChat(errMsg, { historyIndex });                     // Show the error in the chat so the user knows (feedback)
 }
 
 /**

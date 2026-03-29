@@ -19,7 +19,7 @@ export async function createWorkerObjectUrl(url) {
   }
 }
 
-export async function loadFragmentsFromPath(fragments, path = "/fragments/school_str.frag") { // /fragments/school_str.frag
+export async function loadFragmentsFromPath(fragments, path = "/fragments/school_str.fragxxx") { // /fragments/school_str.frag
   try {
     const file = await fetchOrThrow(path, 'Failed to fetch fragments at');
     const buffer = await file.arrayBuffer();
@@ -28,7 +28,7 @@ export async function loadFragmentsFromPath(fragments, path = "/fragments/school
     let modelId = trimmedPath || 'model';                   // derive a stable identifier from the fragment path
     const fileTail = modelId.split('/').pop() || modelId;   // collapse to last path segment for nicer ids
     modelId = fileTail.replace(/\.frag$/i, '') || fileTail; // drop .frag suffix to keep clean name
-    await fragments.core.load(buffer, { modelId });         // register model with derived identifier so selections report current file
+    await fragments.core.load(buffer, { modelId });         // register model with derived identifier so selections report current file,  parses data internally to real objects
   } catch (error) {
     console.error(`Error loading fragments from ${path}:`, error);
     displayUserErrorSnackbar(`Model konnte nicht geladen werden: ${path}`); // show a short snackbar in UI
