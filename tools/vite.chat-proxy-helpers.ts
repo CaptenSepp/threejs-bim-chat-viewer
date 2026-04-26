@@ -1,10 +1,21 @@
 import { buildReferenceSummaryForPrompt, stringifyChatHistoryForPrompt } from './vite.chat-proxy-data.js';
+import type { IncomingMessage } from 'node:http';
 
-export function shouldHandleAssistantReplyRequest(httpRequest) {
+type AssistantReplyRequestBody = {
+  message?: unknown;
+  reference?: unknown;
+  history?: unknown;
+};
+
+type GoogleResponseJson = {
+  candidates?: { content?: { parts?: { text?: unknown }[] } }[];
+};
+
+export function shouldHandleAssistantReplyRequest(httpRequest: IncomingMessage): boolean {
   return httpRequest.method === 'POST' && httpRequest.url?.startsWith('/api/assistant-reply');
 }
 
-export function buildPromptData(requestBody) {
+export function buildPromptData(requestBody: AssistantReplyRequestBody) {
   /** @type {string} */
   const userMessageText = (requestBody?.message ?? '').toString().trim();               // normalize message text (string) from client, Pulls the "message" text from the body. If it's missing, use an empty string. Make sure it's a string, then remove extra spaces from start/end.
   const referencePromptSuffix = buildReferenceSummaryForPrompt(requestBody?.reference); // include selected model reference details
@@ -19,15 +30,15 @@ export function buildPromptData(requestBody) {
   return { userMessageText, promptText };
 }
 
-export function getGoogleModels() {
+export function getGoogleModels(): string[] {
   return (process.env.GOOGLE_MODELS
     || 'gemini-2.5-flash,gemini-2.5-pro,gemini-flash-latest,gemini-pro-latest')
     .split(',')
-    .map(s => s.trim())
+    .map((s: string) => s.trim())
     .filter(Boolean);
 }
 
-export async function fetchAssistantReplyText(googleModels, promptText, openAiApiKey) {
+export async function fetchAssistantReplyText(googleModels: string[], promptText: string, openAiApiKey: string): Promise<string> {
   let assistantReplyText = '';                                        // collect reply on first success
   for (const model of googleModels) {                                 // try each model until one succeeds
     const openAiHttpResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'
@@ -48,7 +59,7 @@ export async function fetchAssistantReplyText(googleModels, promptText, openAiAp
     });
 
     if (openAiHttpResponse.ok) {
-      const openAiResponseJson = await openAiHttpResponse.json();     // parse/read upstream/response JSON
+      const openAiResponseJson = await openAiHttpResponse.json() as GoogleResponseJson; // parse/read upstream/response JSON
       assistantReplyText = openAiResponseJson?.candidates?.[0]?.content?.parts?.[0]?.text?.toString?.().trim?.() || ''; // extract assistant reply text (empty string for safe fallback)
       break; // success
     }

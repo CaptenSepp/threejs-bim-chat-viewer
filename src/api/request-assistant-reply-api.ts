@@ -1,16 +1,42 @@
-// @ts-check
-
 //Request an assistant reply for a user message
-//Input: object with userMessageText (string), previousChatHistory (array, optional), selectedModelReference (any, optional)
+//Input: object with userMessageText (string), previousChatHistory (array, optional), selectedModelReference (ModelReference|null, optional)
 //Output: Promise that resolves to assistant reply text (string)
 
-export async function requestAssistantReplyForUserMessage({ userMessageText, previousChatHistory = [], selectedModelReference = null }) {
-  // use shared client helper for JSON POST (standard headers, error handling, snackbar)
-  const { postReqWithJson: postJson } = await import('../services/http-client.js'); // import only and when we need it
-  const data = await postJson('/api/assistant-reply', {                 // Send request to our API endpoint (dev proxy (or prod function)); insdie: fetch('/api/assistant-reply', { method: 'POST', … })
-    message: userMessageText,                                           // The actual text the user typed
-    history: previousChatHistory,                                       // short history of the chat
-    reference: selectedModelReference                                   // 3D selection reference to a selected model item
-  });
-  return data?.reply || '';                                             // Return assistant reply text or empty string if missing to keep UI stable when reply is absent
+import type {
+  ApiReplyType,
+  ChatMessageType,
+  ModelReferenceType,
+} from "../types/app-types";
+import { postReqWithJson } from "../services/http-client.js";
+
+type AssistantReplyRequestBody = {
+  message: string;
+  history: ChatMessageType[];
+  reference: ModelReferenceType | null;
+};
+
+type RequestAssistantReplyParams = {
+  userMessageText: string;
+  previousChatHistory?: ChatMessageType[];
+  selectedModelReference?: ModelReferenceType | null;
+};
+
+export async function requestAssistantReplyForUserMessage({
+  userMessageText,
+  previousChatHistory = [],
+  selectedModelReference = null,
+}: RequestAssistantReplyParams): Promise<string> {
+  const requestBody: AssistantReplyRequestBody = {
+    // Send request to our API endpoint (dev proxy (or prod function)); insdie: fetch('/api/assistant-reply', { method: 'POST', … })
+    message: userMessageText, // The actual text the user typed
+    history: previousChatHistory, // short history of the chat
+    reference: selectedModelReference, // 3D selection reference to a selected model item
+  };
+
+  const data = await postReqWithJson<ApiReplyType, AssistantReplyRequestBody>(
+    "/api/assistant-reply",
+    requestBody,
+  );
+
+  return data.reply || ""; // Return assistant reply text or empty string if missing to keep UI stable when reply is absent
 }

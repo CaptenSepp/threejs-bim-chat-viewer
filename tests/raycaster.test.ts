@@ -1,7 +1,6 @@
-// @ts-check
 import { Raycasters } from '@thatopen/components';
 import { describe, expect, it, vi } from 'vitest';
-import { applySelHighlight, setRaycastEvents } from '../src/modules/target/raycaster.js';
+import { SELECTION_HIGHLIGHT_STYLE, applySelHighlight, setRaycastEvents } from '../src/modules/target/raycaster.js';
 
 
 vi.mock('@thatopen/components', () => ({                        // mocks the package to avoid real engine classes (module mock) to isolate unit under test
@@ -27,7 +26,7 @@ describe('raycaster applySelectionHighlight', () => {
 
     expect(components.get).toHaveBeenCalled();
     expect(resetHighlight).toHaveBeenCalled();
-    expect(highlight).toHaveBeenCalledWith(expect.any(Object), { model1: [42] });
+    expect(highlight).toHaveBeenCalledWith(SELECTION_HIGHLIGHT_STYLE, { model1: [42] });
     expect(core.update).toHaveBeenCalledWith(true);
 
   });
@@ -40,7 +39,7 @@ describe('raycaster setupRaycastEvents', () => {
 
     // fake canvas that collects event handlers to trigger the click handler manually
     const canvas = {
-      handlers: {}, // Add handlers bucket to store event callbacks
+      handlers: {} as Record<string, (event: MouseEvent) => Promise<void> | void>, // Add handlers bucket to store event callbacks
       addEventListener: vi.fn((event, handler) => { // Fake addEventListener to save the handler instead of real DOM (mock)
         canvas.handlers[event] = handler; // Store the handler by event name (e.g., 'click')
       })
@@ -62,7 +61,7 @@ describe('raycaster setupRaycastEvents', () => {
 
     // initialize and then simulate a click event to test the end-to-end selection flow
     setRaycastEvents(engineComponents, world, handleRaycastSelection);
-    await canvas.handlers.click({});
+    await canvas.handlers.click(new MouseEvent('click'));
 
     // handler should receive the IDs from the raycast result
     expect(engineComponents.get).toHaveBeenCalledWith(Raycasters);

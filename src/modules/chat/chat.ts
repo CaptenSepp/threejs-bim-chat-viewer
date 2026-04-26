@@ -1,11 +1,11 @@
-// @ts-check
 import { aiToggle, appendMessageToChat, chatMessages, clearReferenceBtn, inputField, inputForm, referenceContainer, referenceLabel } from "./components/chat-ui.js";
 import { handleAssistantResponse, messageHistory, pushHistoryUserMessage, removeHistoryMessageByIndex } from "./chat-helpers.js";
+import type { ChatMessageType, ModelReferenceType } from "../../types/app-types.js";
 
-let currentReference = null;                            // current selection reference and history
+let currentReference: ModelReferenceType | null = null;     // current selection reference and history
 
 // API
-export function setComposerReference(referenceObject) { // sets the current 3D selection as a chat reference to link a message to a picked item
+export function setComposerReference(referenceObject: ModelReferenceType) { // sets the current 3D selection as a chat reference to link a message to a picked item
   currentReference = referenceObject;
   referenceLabel.textContent = referenceObject.label;
   referenceContainer.classList.remove('hidden');
@@ -33,8 +33,8 @@ function renderMessageHistory() {                       // keeps DOM list in syn
   });
 }
 
-chatMessages.addEventListener('chat-message-delete', e => {            // receives delete requests from the bubble button
-  const customEvent = /** @type {CustomEvent<{ historyIndex?: number }>} */ (e); // read custom payload safely in JS + @ts-check
+chatMessages.addEventListener('chat-message-delete', e => {             // receives delete requests from the bubble button
+  const customEvent = e as CustomEvent<{ historyIndex?: number }>;      // read custom payload safely in JS + @ts-check
   const historyIndex = Number.isInteger(customEvent.detail?.historyIndex) ? customEvent.detail.historyIndex : null;
   if (!removeHistoryMessageByIndex(historyIndex)) return;              // stop when index is not valid anymore
   renderMessageHistory();                                               // rebuild so all delete indexes stay correct
@@ -43,13 +43,13 @@ chatMessages.addEventListener('chat-message-delete', e => {            // receiv
 // Make the submit handler async so we can await the server reply
 inputForm.addEventListener('submit', async e => {                                              // collect message and append to UI to render the message
   e.preventDefault();
-  const text = (/** @type {HTMLInputElement} */ (inputField)).value.trim();
+  const text = inputField.value.trim();
   if (!text) return;                                                                           // return empty if no text (do nothing)
 
-  const userMessage = { time: Date.now(), reference: currentReference, text, sender: 'user' }; // compose message object (payload) to store what we need for explicit user message object
+  const userMessage: ChatMessageType = { time: Date.now(), reference: currentReference, text, sender: 'user' }; // compose message object (payload) to store what we need for explicit user message object
   pushHistoryUserMessage(userMessage);
 
-  (/** @type {HTMLInputElement} */ (inputField)).value = '';
+  inputField.value = '';
   inputField.focus();
   clearComposerReference();
 

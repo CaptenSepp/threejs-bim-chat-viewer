@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
     assetsInclude: ['**/*.ifc', '**/*.wasm'],
     test: {
       environment: 'jsdom',
-      include: ['tests/**/*.test.js'],
+      include: ['tests/**/*.test.ts'],
       globals: true
     },
     // Register /api/chat dev endpoint (What: enable the plugin so the route exists while vite runs)

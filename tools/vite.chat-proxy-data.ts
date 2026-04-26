@@ -1,10 +1,12 @@
-// @ts-check
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
-/** @param {any} incomingHttpRequest @returns {Promise<any>} */
-export function parseHttpRequestJsonBody(incomingHttpRequest) {                      // reads HTTP request body stream and parses JSON chunks
-  return new Promise((resolveRequestBody, rejectRequestBody) => {                    // accumulate request body characters into a single string
+type JsonObject = Record<string, unknown>;
+
+/** @param {import('node:http').IncomingMessage} incomingHttpRequest @returns {Promise<Record<string, unknown>>} */
+export function parseHttpRequestJsonBody(incomingHttpRequest: IncomingMessage): Promise<JsonObject> { // reads HTTP request body stream and parses JSON chunks
+  return new Promise<JsonObject>((resolveRequestBody, rejectRequestBody) => {        // accumulate request body characters into a single string
     let accumulatedRequestBodyText = '';
-    incomingHttpRequest.on('data', chunk => (accumulatedRequestBodyText += chunk));  // append incoming chunk to the buffer
+    incomingHttpRequest.on('data', (chunk: Buffer | string) => (accumulatedRequestBodyText += chunk)); // append incoming chunk to the buffer
     incomingHttpRequest.on('end', () => {                                            // once stream ends, parse buffered text or fall back to {}
       try {
         resolveRequestBody(accumulatedRequestBodyText ? JSON.parse(accumulatedRequestBodyText) : {});
@@ -16,18 +18,19 @@ export function parseHttpRequestJsonBody(incomingHttpRequest) {                 
   });
 }
 
-export function buildReferenceSummaryForPrompt(referencePayload) {                   // include selection id plus marker attributes
+export function buildReferenceSummaryForPrompt(referencePayload: unknown): string {  // include selection id plus marker attributes
   if (!referencePayload || typeof referencePayload !== 'object') return '';
-  const stringifyReferenceValue = value => {
+  const referenceObject = referencePayload as { modelId?: unknown; itemId?: unknown; attributes?: unknown };
+  const stringifyReferenceValue = (value: unknown) => {
     if (value === undefined || value === null || value === '') return 'Not mentioned!';
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
   };
-  const referenceSummarySegments = [];
-  referenceSummarySegments.push(`Model ID: ${stringifyReferenceValue(referencePayload.modelId)}`);
-  referenceSummarySegments.push(`Item ID: ${stringifyReferenceValue(referencePayload.itemId)}`);
-  const referenceAttributesSource = referencePayload.attributes;
-  const referenceAttributes = referenceAttributesSource && typeof referenceAttributesSource === 'object' ? referenceAttributesSource : {};
+  const referenceSummarySegments: string[] = [];
+  referenceSummarySegments.push(`Model ID: ${stringifyReferenceValue(referenceObject.modelId)}`);
+  referenceSummarySegments.push(`Item ID: ${stringifyReferenceValue(referenceObject.itemId)}`);
+  const referenceAttributesSource = referenceObject.attributes;
+  const referenceAttributes = referenceAttributesSource && typeof referenceAttributesSource === 'object' ? referenceAttributesSource as Record<string, unknown> : {};
   const referenceAttributePairs = [
     ['Name', referenceAttributes.Name ?? referenceAttributes.name],
     ['Object Type', referenceAttributes.ObjectType ?? referenceAttributes.objectType],
@@ -47,16 +50,16 @@ ${referenceSummarySegments.join(', ')}`;
 /**
  * @param {{ statusCode: number; setHeader(name: string, value: string): void; end(body?: string): void }} outgoingHttpResponse
  * @param {number} responseStatusCode
- * @param {any} responseBodyPayload
+ * @param {unknown} responseBodyPayload
  * @returns {void}
  */
-export function sendHttpJsonResponse(outgoingHttpResponse, responseStatusCode, responseBodyPayload) {  // tiny helper to send JSON responses
+export function sendHttpJsonResponse(outgoingHttpResponse: ServerResponse, responseStatusCode: number, responseBodyPayload: unknown): void { // tiny helper to send JSON responses
   outgoingHttpResponse.statusCode = responseStatusCode;                                                // set HTTP status code
   outgoingHttpResponse.setHeader('Content-Type', 'application/json');                                  // JSON content type header
   outgoingHttpResponse.end(JSON.stringify(responseBodyPayload));                                       // serialize payload and finish response
 }
 
-export function stringifyChatHistoryForPrompt(historyPayload) { // return chat history as JSON text for prompts
+export function stringifyChatHistoryForPrompt(historyPayload: unknown): string { // return chat history as JSON text for prompts
   if (!Array.isArray(historyPayload)) return '[]';              // when payload missing or invalid -> empty history
   try {
     return JSON.stringify(historyPayload);                      // serialize list to JSON string (stable formatting)

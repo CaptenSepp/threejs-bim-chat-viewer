@@ -1,4 +1,3 @@
-// @ts-check
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createWorkerObjectUrl, loadFragmentsFromPath } from '../src/core/utils.js';
 
@@ -49,7 +48,7 @@ describe('loadFragmentsFromPath', () => {
 
     // loader should receive the downloaded buffer to confirm integration between fetch and loader
     expect(global.fetch).toHaveBeenCalledWith('/path');
-    expect(load).toHaveBeenCalledWith(buffer, { modelId: 'school_str' });
+    expect(load).toHaveBeenCalledWith(buffer, { modelId: 'path' });
   });
 
   it('logs error when fetch fails', async () => {

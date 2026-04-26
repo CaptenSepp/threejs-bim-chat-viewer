@@ -1,15 +1,14 @@
-// @ts-check
 import * as ThatOpenFront from "@thatopen/components-front";                       // front helpers (Marker overlay system)
 import { getSelectionAttributes, createMarkerValues, applyMarkerLabelValues, computeMarkerWorldPosition, updateMarkerInstance } from "./marker-helpers.js";
 import { updateActiveMarkerContext, clearActiveMarkerContext } from "./marker-visibility.js";
 
-let markerServInst;                 // holds the screen-space marker service (creates/updates/deletes markers)
-let markerLabelElemTemp;            // cloned HTML element used as the marker label (DOM template instance)
-let activeMarkerInstId;             // id/handle of the currently shown marker (for deletion/replacement)
+let markerServInst: InstanceType<typeof ThatOpenFront.Marker>; // holds the screen-space marker service (creates/updates/deletes markers)
+let markerLabelElemTemp: HTMLElement;                          // cloned HTML element used as the marker label (DOM template instance)
+let activeMarkerInstId: string | null;                         // id/handle of the currently shown marker (for deletion/replacement)
 
 export function setMarker(engineComponents) {                                                                                   // prepares HTML overlay (initialization)
   const markerTemplateElement = document.getElementById("marker-template");                                                     // find the template in index.html
-  markerLabelElemTemp = (/** @type {HTMLTemplateElement} */ (markerTemplateElement)).content.firstElementChild.cloneNode(true); // clone label element (detached DOM node)
+  markerLabelElemTemp = ((markerTemplateElement as HTMLTemplateElement).content.firstElementChild as HTMLElement).cloneNode(true) as HTMLElement; // clone label element (detached DOM node)
   markerServInst = engineComponents.get(ThatOpenFront.Marker);                                                                  // get Marker service
 }
 

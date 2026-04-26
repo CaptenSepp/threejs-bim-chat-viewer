@@ -1,7 +1,7 @@
-// @ts-check
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-let setComposerReference, clearComposerReference;
+let setComposerReference: (referenceObject: { label: string; modelId: string; itemId: number }) => void;
+let clearComposerReference: () => void;
 
 beforeEach(async () => { // sets up a minimal DOM for tests to simulate browser environment
                          // element IDs match chat-ui.js (DOM contract) to match query selectors used by the code
@@ -60,9 +60,9 @@ describe('chat references', () => {
 
 describe('chat delete button removal', () => {
   it('removes one specific message after browser confirmation', async () => {
-    const inputField = /** @type {HTMLInputElement} */ (document.getElementById('input-field'));
-    const inputForm = document.getElementById('input-form');
-    const chatMessages = document.getElementById('chat-messages');
+    const inputField = document.getElementById('input-field') as HTMLInputElement;
+    const inputForm = document.getElementById('input-form') as HTMLFormElement;
+    const chatMessages = document.getElementById('chat-messages') as HTMLElement;
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true); // browser confirm should allow deletion in this test
 
     inputField.value = 'First';                                            // prepare the first message to create visible chat entries
@@ -74,10 +74,10 @@ describe('chat delete button removal', () => {
     expect(chatMessages.children).toHaveLength(2);                         // make sure both messages were rendered before the shortcut runs
 
     const selectButtons = chatMessages.querySelectorAll('.message__select-btn');
-    (/** @type {HTMLButtonElement} */ (selectButtons[0])).click();        // select first message to show its delete button
+    (selectButtons[0] as HTMLButtonElement).click();                     // select first message to show its delete button
 
     const deleteButtons = chatMessages.querySelectorAll('.message__delete-btn');
-    (/** @type {HTMLButtonElement} */ (deleteButtons[0])).click();        // remove the first selected message only
+    (deleteButtons[0] as HTMLButtonElement).click();                     // remove the first selected message only
 
     expect(chatMessages.children).toHaveLength(1);                         // only the last rendered message should be removed
     expect(localStorage.getItem('chat-history')).not.toContain('First');   // removed message should no longer exist in storage
