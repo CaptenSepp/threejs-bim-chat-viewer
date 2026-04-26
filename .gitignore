@@ -22,3 +22,6 @@ Thumbs.db
 # Vercel/Netlify metadata
 .vercel
 .netlify
+
+*.patch
+*.backup
