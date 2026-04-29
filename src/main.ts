@@ -6,8 +6,9 @@ import { renderMarkerForSel, setMarker } from "./modules/target/marker.js";
 import { initMarkerVisibilityWatcher } from "./modules/target/marker-visibility.js";
 import { applySelHighlight, setRaycastEvents } from "./modules/target/raycaster.js";
 import { displayUserErrorSnackbar } from "./ui/error-notify.js";
+import type { ModelSelectionType, ViewerWorldType } from "./types/app-types.js";
 
-const viewerContainer = document.getElementById("three-canvas");
+const viewerContainer = document.getElementById("three-canvas") as HTMLElement; // canvas host exists in index.html
 
 
 async function init() { // wrap startup in async init to avoid top-level await parse issues
@@ -16,16 +17,16 @@ async function init() { // wrap startup in async init to avoid top-level await p
 
   window.applyChatSelHighlight = sel => applySelHighlight(engineComponents, sel);          // re-applies highlight in 3D scene - chat clicks in 3D
 
-  async function fitCameraToSelBox(world, sel) {                // focuses camera on the selected area
+  async function fitCameraToSelBox(world: ViewerWorldType, sel: ModelSelectionType) { // focuses camera on the selected area
     const camControls = world.camera.controls;                  // use camera controls once
     if (sel.box) {                                              // if bounding box exists, frame it (Box3)
-      await camControls.fitToBox(sel.box, true);                // center and zoom to the box
+      await camControls!.fitToBox(sel.box, true);               // center and zoom to the box
       return;
     }
   }
 
   // handles a resolved selection: highlight, chat, marker, camera
-  async function applySelEffects(sel) {
+  async function applySelEffects(sel: ModelSelectionType) {
     applySelHighlight(engineComponents, sel);
     const markerAttributes = await renderMarkerForSel(engineComponents, world, sel); // reuse marker data
     const localIdLabel = (markerAttributes && markerAttributes.localId) ? markerAttributes.localId : sel.itemId;
@@ -38,14 +39,14 @@ async function init() { // wrap startup in async init to avoid top-level await p
     // await fitCameraToSelBox(world, selection); // focus camera on selection for commented for later uses
   }
 
-  setRaycastEvents(engineComponents, world, applySelEffects);
+  setRaycastEvents(engineComponents, world as ViewerWorldType, applySelEffects);
 
   // loads IFC or FRAG and prepares marker overlay (initialization)
   // await loadModelAutoDetect(engineComponents, fragments, "/model/custom_psets.ifc");
   await loadModelAutoDetect(engineComponents, fragments, "/fragments/school_str.frag");
 
   setMarker(engineComponents);
-  initMarkerVisibilityWatcher(world); // start camera listener for banner visibility
+  initMarkerVisibilityWatcher(world as ViewerWorldType); // start camera listener for banner visibility
 }
 
 // catch startup errors and show to user

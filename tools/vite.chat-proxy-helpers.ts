@@ -12,7 +12,7 @@ type GoogleResponseJson = {
 };
 
 export function shouldHandleAssistantReplyRequest(httpRequest: IncomingMessage): boolean {
-  return httpRequest.method === 'POST' && httpRequest.url?.startsWith('/api/assistant-reply');
+  return httpRequest.method === 'POST' && (httpRequest.url?.startsWith('/api/assistant-reply') ?? false);
 }
 
 export function buildPromptData(requestBody: AssistantReplyRequestBody) {

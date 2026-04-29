@@ -4,7 +4,7 @@ import {
 } from "../../ui/marker-banner.js";
 import { applyMarkerLabelValues } from "./marker-helpers.js";
 import type { Camera, Vector3 } from "three";
-import type { MarkerAttributesType } from "../../types/app-types.js";
+import type { MarkerAttributesType, ViewerWorldType } from "../../types/app-types.js";
 
 type CameraControlsLike = {
   addEventListener(type: "change" | "update", listener: () => void): void;
@@ -15,11 +15,11 @@ let activeMarkerAttrs: MarkerAttributesType | null = null; // current marker att
 let cameraThree: Camera | null = null; // cached THREE camera instance for fast access (avoids re-reading world each time)
 let camControls: CameraControlsLike | null = null; // cached camera controls to listen for user-driven camera moves
 
-export function initMarkerVisibilityWatcher(world) {
+export function initMarkerVisibilityWatcher(world: ViewerWorldType): void {
   // Initialize once: listen to camera changes
   try {
     cameraThree = world.camera.three as Camera; // grab the underlying THREE camera
-    camControls = world.camera.controls as CameraControlsLike; // controls fire 'change' whenever the user pans/zooms/rotates
+    camControls = world.camera.controls as unknown as CameraControlsLike; // controls fire 'change' whenever the user pans/zooms/rotates
     if (camControls && typeof camControls.addEventListener === "function") {
       camControls.addEventListener("change", onCameraChange); // subscribe once to keep banner in sync with camera
       camControls.addEventListener("update", onCameraChange); // some controls fire only 'update' events

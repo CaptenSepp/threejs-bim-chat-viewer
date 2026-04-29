@@ -9,7 +9,7 @@ type RayHit = {
   localId: number;
 };
 
-type RaycasterLike = {
+export type RaycasterLike = {
   mouse: { updateMouseInfo: (event: MouseEvent) => void };
   castRay: () => Promise<RayHit | null>;
 };

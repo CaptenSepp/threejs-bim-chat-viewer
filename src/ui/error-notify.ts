@@ -1,9 +1,9 @@
 // Simple in-app error notifier (tiny snackbar) the one button that actually shows a red error box on screen
-let ErrorSnackElem = null;     // holds the DOM element for the snackbar (created once)
-let ErrorSnackTimer = null;    // timeout id used to hide the snackbar after a delay
+let ErrorSnackElem: HTMLDivElement | null = null; // holds the DOM element for the snackbar (created once)
+let ErrorSnackTimer: ReturnType<typeof setTimeout> | null = null; // timeout id used to hide the snackbar after a delay
 
 // Shows a short, visible error message to the user via snackbar
-export function displayUserErrorSnackbar(messageText = 'Ein Fehler ist aufgetreten', durationMs = 10000) {
+export function displayUserErrorSnackbar(messageText: unknown = 'Ein Fehler ist aufgetreten', durationMs = 10000): void {
   try {
     if (!ErrorSnackElem) {
       ErrorSnackElem = document.createElement('div');         // create snackbar host element

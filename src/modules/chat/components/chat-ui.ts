@@ -1,4 +1,5 @@
 import { escapeHTML } from "../../../core/utils.js";
+import type { AppendMessageOptionsType, ChatMessageType, ModelReferenceType } from "../../../types/app-types.js";
 
 export const chatMessages = document.getElementById('chat-messages') as HTMLElement;
 export const inputForm = document.getElementById('input-form') as HTMLFormElement;
@@ -8,16 +9,16 @@ export const referenceLabel = document.getElementById('chat-reference-label') as
 export const clearReferenceBtn = document.getElementById('clear-reference-btn') as HTMLButtonElement;
 export const aiToggle = document.getElementById('ai-toggle') as HTMLInputElement | null;
 
-function createReferenceChip(reference) {                // creates a clickable chip that jumps back to the 3D selection (UI chip)
+function createReferenceChip(reference: ModelReferenceType) { // creates a clickable chip that jumps back to the 3D selection (UI chip)
   const clickableRefTag = document.createElement('div'); // container element for the chip
   clickableRefTag.classList.add('message-reference');
   clickableRefTag.textContent = reference.label;
   clickableRefTag.dataset.modelId = reference.modelId;   // store modelId to target the correct model
-  clickableRefTag.dataset.itemId = reference.itemId;     // store itemId to target the specific element
+  clickableRefTag.dataset.itemId = String(reference.itemId); // store itemId to target the specific element
   clickableRefTag.addEventListener('click', () => {      // on click, re-select and highlight in 3D (interaction) to restore the selection from chat
     if (clickableRefTag.dataset.itemId) {                // avoid missing id (guard) to prevent invalid highlighting
       window.applyChatSelHighlight({                     // trigger global highlighter
-        modelId: clickableRefTag.dataset.modelId,
+        modelId: clickableRefTag.dataset.modelId || '',
         itemId: +clickableRefTag.dataset.itemId,         // convert to number (type cast) to ensure numeric id
       });
     }
@@ -25,7 +26,7 @@ function createReferenceChip(reference) {                // creates a clickable 
   return clickableRefTag;
 }
 
-export function appendMessageToChat({ text, time, reference, sender }, { historyIndex = null } = {}) { // renders a message in the chat (DOM update)
+export function appendMessageToChat({ text, time, reference, sender }: ChatMessageType, { historyIndex = null }: AppendMessageOptionsType = {}) { // renders a message in the chat (DOM update)
   const msgWrapper = document.createElement('div');       // build wrapper and mark as self (message DOM) to style it as the sender
   const isSelf = sender ? sender === 'user' : true;       // decide side based on sender (default user/self for backwards-compat)
   msgWrapper.classList.add('message-wrapper');

@@ -1,7 +1,7 @@
 // @ts-check
-let OffscreenBannerElem = null;                                     // holds DOM element created once for the banner
+let OffscreenBannerElem: HTMLDivElement | null = null;              // holds DOM element created once for the banner
 
-function ensureOffscreenBannerElemExist() {                               // Ensures banner element exists and returns it
+function ensureOffscreenBannerElemExist(): HTMLDivElement {                // Ensures banner element exists and returns it
   if (!OffscreenBannerElem) {
     OffscreenBannerElem = document.createElement('div');            // create host element
     OffscreenBannerElem.id = 'app-marker-banner';                   // fixed id
@@ -12,7 +12,7 @@ function ensureOffscreenBannerElemExist() {                               // Ens
 }
 
 // Shows marker metadata HTML in the banner (no auto-hide)
-export function displayOffscreenBanner(htmlContent) {
+export function displayOffscreenBanner(htmlContent: unknown): void {
   try {
     const el = ensureOffscreenBannerElemExist();                          // create or reuse the banner
     el.innerHTML = String(htmlContent || '');                    // set HTML content (table markup)
@@ -21,7 +21,7 @@ export function displayOffscreenBanner(htmlContent) {
 }
 
 // Hides the banner (used when marker comes back in view or is cleared)
-export function hideOffscreenBanner() {
+export function hideOffscreenBanner(): void {
   try {
     if (!OffscreenBannerElem) return;                               // nothing to hide
     OffscreenBannerElem.classList.remove('visible');                // hide via CSS class

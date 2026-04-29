@@ -19,16 +19,15 @@ export function pushHistoryUserMessage(userMessage: ChatMessageType) {
 export function removeHistoryMessageByIndex(
   historyIndex: number | null | undefined,
 ) {
-  const isIndexValid =
-    Number.isInteger(historyIndex) &&
-    historyIndex >= 0 &&
-    historyIndex < messageHistory.length;
-  if (!isIndexValid) return false; // stop when the selected index does not exist
+  if (typeof historyIndex !== "number") return false; // stop when the index is missing
+  if (!Number.isInteger(historyIndex)) return false; // stop when the index is not a whole number
+  if (historyIndex < 0 || historyIndex >= messageHistory.length) return false; // stop when the index is outside the history
 
   messageHistory.splice(historyIndex, 1); // remove the selected message only
   localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // keep storage in sync with the array
   return true; // report that one selected message was removed
 }
+
 
 function pushAssistantMessage(assistantMessage: ChatMessageType) {
   messageHistory.push(assistantMessage); // Save assistant message to in-memory array

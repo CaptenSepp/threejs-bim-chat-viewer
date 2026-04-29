@@ -8,7 +8,7 @@ type CameraControlsLike = {
 };
 
 // sets up the 3D viewer and engine (initialization)
-export async function createViewerEngine(viewerContainer) {
+export async function createViewerEngine(viewerContainer: HTMLElement) {
   const engineComponents = new TOC.Components();                                     // central service registry for the engine
 
                                                                                
@@ -22,7 +22,7 @@ export async function createViewerEngine(viewerContainer) {
                                                                                
   world.renderer = new TOF.PostproductionRenderer(engineComponents, viewerContainer);// renderer and camera setup
   world.camera = new TOC.OrthoPerspectiveCamera(engineComponents);
-  await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25);                   // set initial view position and target
+  await world.camera.controls!.setLookAt(78, 20, -2.2, 26, -4, 25);                  // set initial view position and target
 
                                                                                
   engineComponents.init();                                                           // initialize components and helpers (engine init)
@@ -44,9 +44,10 @@ export async function createViewerEngine(viewerContainer) {
 
   // render loop
   let isRendering = true;
-  if (world.renderer.three?.setAnimationLoop) {
-    world.renderer.three.setAnimationLoop(() => {        // use rAF-based loop when available via requestAnimationFrame
-      if (isRendering) world.renderer.update();
+  const viewerRenderer = world.renderer;                 // keep renderer non-null for strict TypeScript
+  if (viewerRenderer.three?.setAnimationLoop) {
+    viewerRenderer.three.setAnimationLoop(() => {        // use rAF-based loop when available via requestAnimationFrame
+      if (isRendering) viewerRenderer.update();
     });
   }
   document.addEventListener("visibilitychange", () => {  // pause/resume on tab visibility changes to save resources when hidden

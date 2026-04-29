@@ -1,4 +1,6 @@
 import { Raycasters } from '@thatopen/components';
+import type { Components } from '@thatopen/components';
+import type { ViewerWorldType } from '../src/types/app-types.js';
 import { describe, expect, it, vi } from 'vitest';
 import { SELECTION_HIGHLIGHT_STYLE, applySelHighlight, setRaycastEvents } from '../src/modules/target/raycaster.js';
 
@@ -22,11 +24,11 @@ describe('raycaster applySelectionHighlight', () => {
     const components = { get: vi.fn(() => ({ resetHighlight, highlight, core })) }; // simulate components service registry
     const sel = { modelId: 'model1', itemId: 42 };      // example like a raycast selection to drive expected arguments
 
-    applySelHighlight(components, sel);           // call the unit under test (UUT)
+    applySelHighlight(components as unknown as Components, sel);           // call the unit under test (UUT)
 
     expect(components.get).toHaveBeenCalled();
     expect(resetHighlight).toHaveBeenCalled();
-    expect(highlight).toHaveBeenCalledWith(SELECTION_HIGHLIGHT_STYLE, { model1: [42] });
+    expect(highlight).toHaveBeenCalledWith(SELECTION_HIGHLIGHT_STYLE, { model1: new Set([42]) });
     expect(core.update).toHaveBeenCalledWith(true);
 
   });
@@ -60,7 +62,7 @@ describe('raycaster setupRaycastEvents', () => {
     const engineComponents = { get: vi.fn(() => raycastersService) };
 
     // initialize and then simulate a click event to test the end-to-end selection flow
-    setRaycastEvents(engineComponents, world, handleRaycastSelection);
+    setRaycastEvents(engineComponents as unknown as Components, world as unknown as ViewerWorldType, handleRaycastSelection);
     await canvas.handlers.click(new MouseEvent('click'));
 
     // handler should receive the IDs from the raycast result

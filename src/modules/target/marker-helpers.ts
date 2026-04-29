@@ -1,43 +1,56 @@
 // @ts-check
 import { FragmentsManager as EngineFragmentsManager } from "@thatopen/components";                       // engine service to access fragment data (attributes API)
+import type { Components } from "@thatopen/components";
+import type { MarkerServiceType, ModelSelectionType } from "../../types/app-types.js";
+import type { Vector3 } from "three";
 
-export async function getSelectionAttributes(engineComponents, sel) {
-  const fragmentsManager = engineComponents.get(EngineFragmentsManager);                                 // access fragment data service
+// Raw marker values can be plain or wrapped in a value object.
+type MarkerAttributeValueType = string | number | { value?: string | number } | null | undefined;
+// Marker attributes are stored by attribute name.
+type MarkerAttributesSourceType = Record<string, MarkerAttributeValueType>;
+// Small fragment-data shape used by this file.
+type FragmentDataGetterType = {
+  getData(modelIds: Record<string, Set<number>>): Promise<Record<string, MarkerAttributesSourceType[]>>;
+};
+
+export async function getSelectionAttributes(engineComponents: Components, sel: ModelSelectionType): Promise<MarkerAttributesSourceType> {
+  const fragmentsManager = engineComponents.get(EngineFragmentsManager) as FragmentDataGetterType;       // access fragment data service
 
 // fetch attributes for the selected item (attributes API -> object of key/value pairs)
-  const attributesByModel = await fragmentsManager.getData({ [sel.modelId]: [sel.itemId] });             // returns { [modelId]: [attrsForItem] }
+  const attributesByModel = await fragmentsManager.getData({ [sel.modelId]: new Set([sel.itemId]) });    // returns { [modelId]: [attrsForItem] }
   const attrs = attributesByModel[sel.modelId][0];                                                       // take first (only) item attributes
   return attrs;
 }
 
-export function createMarkerValues(attrs) {
-  const asPlainValue = (v) => (v && typeof v === "object" && "value" in v ? v.value : v);                // unwrap value objects to plain values (some entries are { value: X }) to normalize mixed shapes
+export function createMarkerValues(attrs: MarkerAttributesSourceType) {
+  const asPlainValue = (v: MarkerAttributeValueType) => (v && typeof v === "object" && "value" in v ? v.value : v); // unwrap value objects to plain values (some entries are { value: X }) to normalize mixed shapes
+  const asTextValue = (v: MarkerAttributeValueType) => String(asPlainValue(v) || 'Not mentioned!');       // convert marker values to display text
 
 // fill overlay fields with attributes
-  const markerName = asPlainValue(attrs.Name) || 'Not mentioned!';                                       // reuse marker data for prompt
-  const markerObjectType = asPlainValue(attrs.ObjectType) || 'Not mentioned!';
-  const markerTag = asPlainValue(attrs.Tag) || 'Not mentioned!';
-  const markerCategory = asPlainValue(attrs._category) || 'Not mentioned!';
-  const markerLocalId = asPlainValue(attrs._localId) || 'Not mentioned!';
+  const markerName = asTextValue(attrs.Name);                                                           // reuse marker data for prompt
+  const markerObjectType = asTextValue(attrs.ObjectType);
+  const markerTag = asTextValue(attrs.Tag);
+  const markerCategory = asTextValue(attrs._category);
+  const markerLocalId = asTextValue(attrs._localId);
   return { markerName, markerObjectType, markerTag, markerCategory, markerLocalId };
 }
 
-export function applyMarkerLabelValues(markerLabelElemTemp, markerName, markerObjectType, markerTag, markerCategory, markerLocalId) {
-  markerLabelElemTemp.querySelector(".val-name").textContent = markerName;  // chaning values directly into html template node
-  markerLabelElemTemp.querySelector(".val-objecttype").textContent = markerObjectType;
-  markerLabelElemTemp.querySelector(".val-tag").textContent = markerTag;
-  markerLabelElemTemp.querySelector(".val-category").textContent = markerCategory;
-  markerLabelElemTemp.querySelector(".val-localid").textContent = markerLocalId;
+export function applyMarkerLabelValues(markerLabelElemTemp: HTMLElement, markerName: string | number, markerObjectType: string | number, markerTag: string | number, markerCategory: string | number, markerLocalId: string | number) {
+  markerLabelElemTemp.querySelector(".val-name")!.textContent = String(markerName);  // chaning values directly into html template node
+  markerLabelElemTemp.querySelector(".val-objecttype")!.textContent = String(markerObjectType);
+  markerLabelElemTemp.querySelector(".val-tag")!.textContent = String(markerTag);
+  markerLabelElemTemp.querySelector(".val-category")!.textContent = String(markerCategory);
+  markerLabelElemTemp.querySelector(".val-localid")!.textContent = String(markerLocalId);
 }
 
-export function computeMarkerWorldPosition(sel) {
+export function computeMarkerWorldPosition(sel: ModelSelectionType): Vector3 {
   // place marker slightly above the selection (position = Vector3 in world space)
-  const markerWorldPosition = sel.center.clone();                        // clone center (avoid mutating selection.center)
+  const markerWorldPosition = sel.center!.clone();                       // clone center (avoid mutating selection.center)
   markerWorldPosition.y += 6;                                            // offset in meters
   return markerWorldPosition;
 }
 
-export function updateMarkerInstance(markerServInst, activeMarkerInstId, world, markerLabelElemTemp, markerWorldPosition) {
+export function updateMarkerInstance(markerServInst: MarkerServiceType, activeMarkerInstId: string | null, world: unknown, markerLabelElemTemp: HTMLElement, markerWorldPosition: Vector3): string {
   if (activeMarkerInstId) markerServInst.delete(activeMarkerInstId);     // remove previous marker
   const newActiveMarkerInstId = markerServInst.create(                   // create new screen-space marker
     world, markerLabelElemTemp, markerWorldPosition, true
