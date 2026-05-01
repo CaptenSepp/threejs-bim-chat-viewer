@@ -1,5 +1,5 @@
 import { appendMessageToChat } from "./components/chat-ui.js";
-import { requestAssistantReplyForUserMessage } from "../../api/request-assistant-reply-api.js";
+import { requestAssistantReplyForUserMessage } from "../../api/request-assistant-reply-api-client.js";
 import { displayUserErrorSnackbar } from "../../ui/error-notify.js";
 import type { ChatMessageType } from "../../types/app-types.js";
 
