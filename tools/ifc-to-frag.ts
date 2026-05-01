@@ -1,4 +1,3 @@
-// @ts-check
 // Minimal IFC -> FRAG converter (Node script)
 // How to run (debug ): `node tools/ifc-to-frag.js`
 // Context : IFC = Industry Foundation Classes (BIM format), FRAG = ThatOpen's fragment format (optimized for web rendering).
@@ -16,7 +15,7 @@ const inputIfcModelPath = path.resolve(projectRootAbsPath, 'public/model/custom_
 const outputFragModelPath = path.resolve(projectRootAbsPath, 'public/fragments/custom_psets.frag'); // Output FRAG file path
 const webIfcWasmDirectory = path.resolve(projectRootAbsPath, 'node_modules/web-ifc') + path.sep;    // Absolute directory to web-ifc WASM files
 
-async function convertIfcToFrag() {                                             // Pipeline read -> convert -> write
+async function convertIfcToFrag(): Promise<void> {                              // Pipeline read -> convert -> write
   const inputIfcFileBytes = new Uint8Array(fs.readFileSync(inputIfcModelPath)); // Load IFC file into bytes (Uint8Array)
   const ifcImporter = new IfcImporter();                                        // Create importer (converter instance)
   ifcImporter.wasm.path = webIfcWasmDirectory;                                  // Configure path to web-ifc WASM runtime files

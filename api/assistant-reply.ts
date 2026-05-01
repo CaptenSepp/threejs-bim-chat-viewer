@@ -3,18 +3,13 @@ import {
   fetchAssistantReplyText,
   getGoogleModels,
 } from "../tools/vite.chat-proxy-helpers.js";
-
-type AssistantReplyRequestBody = {
-  message?: unknown;
-  history?: unknown;
-  reference?: unknown;
-};
+import type { AssistantReplyRequestBody } from "../tools/vite.chat-proxy-helpers.js";
 
 export async function POST(request: Request) {
   // Only POST is supported here because the chat sends JSON data.
   try {
     // Read the JSON body sent by the browser.
-    const requestBody = (await request.json()) as AssistantReplyRequestBody;
+    const requestBody: AssistantReplyRequestBody = await request.json();
     // Build the same prompt text that local dev already uses.
     const { userMessageText, promptText } = buildPromptData(requestBody);
 

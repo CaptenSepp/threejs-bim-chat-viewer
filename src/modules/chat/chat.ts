@@ -4,6 +4,12 @@ import type { ChatMessageType, ModelReferenceType } from "../../types/app-types.
 
 let currentReference: ModelReferenceType | null = null;     // current selection reference and history
 
+function isChatDeleteEvent(
+  event: Event,
+): event is CustomEvent<{ historyIndex?: number }> {
+  return event instanceof CustomEvent;
+}
+
 // API
 export function setComposerReference(referenceObject: ModelReferenceType) { // sets the current 3D selection as a chat reference to link a message to a picked item
   currentReference = referenceObject;
@@ -34,8 +40,8 @@ function renderMessageHistory() {                       // keeps DOM list in syn
 }
 
 chatMessages.addEventListener('chat-message-delete', e => {             // receives delete requests from the bubble button
-  const customEvent = e as CustomEvent<{ historyIndex?: number }>;      // read custom payload safely in JS + @ts-check
-  const historyIndex = Number.isInteger(customEvent.detail?.historyIndex) ? customEvent.detail.historyIndex : null;
+  if (!isChatDeleteEvent(e)) return;                                    // stop if event payload is not our custom event
+  const historyIndex = Number.isInteger(e.detail?.historyIndex) ? e.detail.historyIndex : null;
   if (!removeHistoryMessageByIndex(historyIndex)) return;              // stop when index is not valid anymore
   renderMessageHistory();                                               // rebuild so all delete indexes stay correct
 });

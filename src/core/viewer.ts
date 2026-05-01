@@ -14,7 +14,7 @@ export async function createViewerEngine(viewerContainer: HTMLElement) {
                                                                                
   const worlds = engineComponents.get(TOC.Worlds);                                   // create world and scene
   const world = worlds.create();
-  const simpleScene = /** @type {import('@thatopen/components').SimpleScene} */ (new TOC.SimpleScene(engineComponents));
+  const simpleScene = new TOC.SimpleScene(engineComponents) as TOC.SimpleScene;
   world.scene = simpleScene;
   simpleScene.setup();
   (world.scene.three as Scene).background = null;                                    // transparent background (no color)

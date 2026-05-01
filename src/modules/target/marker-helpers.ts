@@ -1,20 +1,24 @@
-// @ts-check
 import { FragmentsManager as EngineFragmentsManager } from "@thatopen/components";                       // engine service to access fragment data (attributes API)
 import type { Components } from "@thatopen/components";
-import type { MarkerServiceType, ModelSelectionType } from "../../types/app-types.js";
+import type {
+  MarkerServiceType,
+  ModelSelectionType,
+  ViewerWorldType,
+} from "../../types/app-types.js";
 import type { Vector3 } from "three";
 
 // Raw marker values can be plain or wrapped in a value object.
-type MarkerAttributeValueType = string | number | { value?: string | number } | null | undefined;
+type MarkerAttributeValueType =
+  | string
+  | number
+  | { value?: string | number }
+  | MarkerAttributesSourceType[]
+  | null
+  | undefined;
 // Marker attributes are stored by attribute name.
 type MarkerAttributesSourceType = Record<string, MarkerAttributeValueType>;
-// Small fragment-data shape used by this file.
-type FragmentDataGetterType = {
-  getData(modelIds: Record<string, Set<number>>): Promise<Record<string, MarkerAttributesSourceType[]>>;
-};
-
 export async function getSelectionAttributes(engineComponents: Components, sel: ModelSelectionType): Promise<MarkerAttributesSourceType> {
-  const fragmentsManager = engineComponents.get(EngineFragmentsManager) as FragmentDataGetterType;       // access fragment data service
+  const fragmentsManager = engineComponents.get(EngineFragmentsManager);                                  // access fragment data service
 
 // fetch attributes for the selected item (attributes API -> object of key/value pairs)
   const attributesByModel = await fragmentsManager.getData({ [sel.modelId]: new Set([sel.itemId]) });    // returns { [modelId]: [attrsForItem] }
@@ -22,7 +26,13 @@ export async function getSelectionAttributes(engineComponents: Components, sel: 
   return attrs;
 }
 
-export function createMarkerValues(attrs: MarkerAttributesSourceType) {
+export function createMarkerValues(attrs: MarkerAttributesSourceType): {
+  markerName: string;
+  markerObjectType: string;
+  markerTag: string;
+  markerCategory: string;
+  markerLocalId: string;
+} {
   const asPlainValue = (v: MarkerAttributeValueType) => (v && typeof v === "object" && "value" in v ? v.value : v); // unwrap value objects to plain values (some entries are { value: X }) to normalize mixed shapes
   const asTextValue = (v: MarkerAttributeValueType) => String(asPlainValue(v) || 'Not mentioned!');       // convert marker values to display text
 
@@ -50,7 +60,7 @@ export function computeMarkerWorldPosition(sel: ModelSelectionType): Vector3 {
   return markerWorldPosition;
 }
 
-export function updateMarkerInstance(markerServInst: MarkerServiceType, activeMarkerInstId: string | null, world: unknown, markerLabelElemTemp: HTMLElement, markerWorldPosition: Vector3): string {
+export function updateMarkerInstance(markerServInst: MarkerServiceType, activeMarkerInstId: string | null, world: ViewerWorldType, markerLabelElemTemp: HTMLElement, markerWorldPosition: Vector3): string | null {
   if (activeMarkerInstId) markerServInst.delete(activeMarkerInstId);     // remove previous marker
   const newActiveMarkerInstId = markerServInst.create(                   // create new screen-space marker
     world, markerLabelElemTemp, markerWorldPosition, true

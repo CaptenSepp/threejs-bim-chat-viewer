@@ -5,9 +5,31 @@ import type { ChatMessageType } from "../../types/app-types.js";
 
 const STORAGE_KEY = "chat-history";
 
-export const messageHistory = JSON.parse(
-  localStorage.getItem(STORAGE_KEY) || "[]",
-) as ChatMessageType[];
+function isChatMessage(value: object): value is ChatMessageType {
+  return (
+    "time" in value &&
+    typeof value.time === "number" &&
+    "reference" in value &&
+    "text" in value &&
+    typeof value.text === "string" &&
+    "sender" in value &&
+    (value.sender === "user" || value.sender === "assistant" || value.sender === "system")
+  );
+}
+
+function parseStoredMessageHistory(): ChatMessageType[] {
+  try {
+    const parsedHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    if (!Array.isArray(parsedHistory)) return [];
+    return parsedHistory.filter(
+      (item): item is ChatMessageType => !!item && typeof item === "object" && isChatMessage(item),
+    );
+  } catch {
+    return [];
+  }
+}
+
+export const messageHistory = parseStoredMessageHistory();
 
 export function pushHistoryUserMessage(userMessage: ChatMessageType) {
   messageHistory.push(userMessage);
@@ -43,10 +65,6 @@ function pushErrorMessage(errMsg: ChatMessageType) {
   appendMessageToChat(errMsg, { historyIndex }); // Show the error in the chat so the user knows (feedback)
 }
 
-/**
- * @param {string} text
- * @param {{ time: number; reference: import("../../types/app-types.js").ModelReference | null; text: string; sender: "user" | "assistant" | "system"; }} userMessage
- */
 export async function handleAssistantResponse(
   text: string,
   userMessage: ChatMessageType,

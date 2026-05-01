@@ -20,20 +20,11 @@ async function parseJson<TResponse>(res: Response, onErrorPrefix = 'Fehler bei A
   return res.json();                                                     // success path: decode JSON payload
 }
 
-/**
- * @param {string} url
- * @param {{ headers?: Record<string, string>, signal?: AbortSignal }} [options]
- */
 export async function getReqWithJson<TResponse>(url: string, { headers = {}, signal }: JsonRequestOptions = {}): Promise<TResponse> { // perform a GET request expecting a JSON response
   const res = await fetch(url, { method: 'GET', headers, signal });         // fire GET with optional headers/AbortSignal
   return parseJson(res, 'GET fehlgeschlagen');                              // parse or show snackbar on error
 }
 
-/**
- * @param {string} url
- * @param {unknown} body
- * @param {{ headers?: Record<string, string>, signal?: AbortSignal }} [options]
- */
 export async function postReqWithJson<TResponse, TBody>(url: string, body: TBody, { headers = {}, signal }: JsonRequestOptions = {}): Promise<TResponse> { // perform a POST request with JSON body
   const res = await fetch(url, {                                 // send request using Fetch API (browser)
     method: 'POST',                                              // HTTP verb

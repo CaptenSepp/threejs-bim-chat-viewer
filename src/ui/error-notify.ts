@@ -3,7 +3,7 @@ let ErrorSnackElem: HTMLDivElement | null = null; // holds the DOM element for t
 let ErrorSnackTimer: ReturnType<typeof setTimeout> | null = null; // timeout id used to hide the snackbar after a delay
 
 // Shows a short, visible error message to the user via snackbar
-export function displayUserErrorSnackbar(messageText: unknown = 'Ein Fehler ist aufgetreten', durationMs = 10000): void {
+export function displayUserErrorSnackbar(messageText: string | number | boolean | null | undefined = 'Ein Fehler ist aufgetreten', durationMs = 10000): void {
   try {
     if (!ErrorSnackElem) {
       ErrorSnackElem = document.createElement('div');         // create snackbar host element

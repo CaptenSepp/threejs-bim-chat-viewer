@@ -1,4 +1,3 @@
-// @ts-check
 import { FragmentsManager, Raycasters } from "@thatopen/components";
 import type { Components } from "@thatopen/components";
 import * as FRAGS from "@thatopen/fragments";
@@ -13,7 +12,12 @@ const cssPrimaryColor = (typeof document !== "undefined" && typeof getComputedSt
   : "#FF0000";
 
 
-export const SELECTION_HIGHLIGHT_STYLE = {
+export const SELECTION_HIGHLIGHT_STYLE: {
+  color: THREE.Color;
+  renderedFaces: typeof FRAGS.RenderedFaces.ONE;
+  opacity: number;
+  transparent: boolean;
+} = {
   color: new THREE.Color(cssPrimaryColor || "#FF0000"),
   renderedFaces: FRAGS.RenderedFaces.ONE,                     // ???: render only front faces (Doku empfohlen)
   opacity: 0.6,

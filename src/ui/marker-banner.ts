@@ -1,4 +1,3 @@
-// @ts-check
 let OffscreenBannerElem: HTMLDivElement | null = null;              // holds DOM element created once for the banner
 
 function ensureOffscreenBannerElemExist(): HTMLDivElement {                // Ensures banner element exists and returns it
@@ -12,7 +11,7 @@ function ensureOffscreenBannerElemExist(): HTMLDivElement {                // En
 }
 
 // Shows marker metadata HTML in the banner (no auto-hide)
-export function displayOffscreenBanner(htmlContent: unknown): void {
+export function displayOffscreenBanner(htmlContent: string | number | boolean | null | undefined): void {
   try {
     const el = ensureOffscreenBannerElemExist();                          // create or reuse the banner
     el.innerHTML = String(htmlContent || '');                    // set HTML content (table markup)

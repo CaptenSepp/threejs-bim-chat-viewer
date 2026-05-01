@@ -1,4 +1,3 @@
-// @ts-check
 // Import Vite helper so local .env files are loaded for the dev server too.
 import { defineConfig, loadEnv } from 'vite';
 // Import path helpers so env files are loaded from this app folder, not from the terminal folder.

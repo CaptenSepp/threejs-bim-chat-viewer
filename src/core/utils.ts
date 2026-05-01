@@ -1,11 +1,10 @@
-// @ts-check
 import type { Components } from "@thatopen/components";
 import type { IfcLoaderLikeType } from "../types/app-types.js";
 
 // Small fragment-loader shape used by this file.
 type FragmentLoaderType = {
   core: {
-    load(buffer: ArrayBuffer, options: { modelId: string }): Promise<unknown>; // loader returns a model, but this file does not use it
+    load(buffer: ArrayBuffer, options: { modelId: string }): Promise<object>; // loader returns a model, but this file does not use it
   };
 };
 
@@ -51,7 +50,7 @@ export async function loadIfcFromPath(components: Components, path = "/model/cus
     const file = await fetchOrThrow(path, 'Failed to fetch IFC at');
     const buffer = await file.arrayBuffer();
     const bytes = new Uint8Array(buffer);                           // convert to bytes for IfcLoader
-    const ifcLoader = components.get(IfcLoader) as IfcLoaderLikeType; // get IFC loader from engine
+    const ifcLoader: IfcLoaderLikeType = components.get(IfcLoader);    // get IFC loader from engine
     await ifcLoader.setup({                                         // pin wasm CDN to avoid autoSetWasm fetch
       autoSetWasm: false,
       wasm: { path: "https://unpkg.com/web-ifc@0.0.70/", absolute: true },
@@ -79,7 +78,7 @@ export async function loadModelAutoDetect(components: Components, fragments: Fra
   displayUserErrorSnackbar(`Unbekannter Dateityp: ${safePath || path}`);
 }
 
-export function escapeHTML(str: unknown): string { // replaces special characters with HTML-safe entities (escaping)
+export function escapeHTML(str: string | number | boolean | null | undefined): string { // replaces special characters with HTML-safe entities (escaping)
   const s = String(str ?? 'undefined!'); // avoid undefined/null issues
   return s.replace(/[&<>"']/g, m => ({
     '&': '&amp;',

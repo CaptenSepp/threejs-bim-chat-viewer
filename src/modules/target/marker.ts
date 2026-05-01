@@ -2,7 +2,7 @@ import * as ThatOpenFront from "@thatopen/components-front";                    
 import type { Components } from "@thatopen/components";
 import { getSelectionAttributes, createMarkerValues, applyMarkerLabelValues, computeMarkerWorldPosition, updateMarkerInstance } from "./marker-helpers.js";
 import { updateActiveMarkerContext, clearActiveMarkerContext } from "./marker-visibility.js";
-import type { MarkerAttributesType, MarkerServiceType, ModelSelectionType } from "../../types/app-types.js";
+import type { MarkerAttributesType, MarkerServiceType, ModelSelectionType, ViewerWorldType } from "../../types/app-types.js";
 
 let markerServInst: MarkerServiceType;                         // holds the screen-space marker service (creates/updates/deletes markers)
 let markerLabelElemTemp: HTMLElement;                          // cloned HTML element used as the marker label (DOM template instance)
@@ -19,7 +19,7 @@ export async function renderMarkerForSel(engineComponents: Components, world: un
   const { markerName, markerObjectType, markerTag, markerCategory, markerLocalId } = createMarkerValues(attrs);
   applyMarkerLabelValues(markerLabelElemTemp, markerName, markerObjectType, markerTag, markerCategory, markerLocalId);
   const markerWorldPosition = computeMarkerWorldPosition(sel);
-  activeMarkerInstId = updateMarkerInstance(markerServInst, activeMarkerInstId, world, markerLabelElemTemp, markerWorldPosition);
+  activeMarkerInstId = updateMarkerInstance(markerServInst, activeMarkerInstId, world as ViewerWorldType, markerLabelElemTemp, markerWorldPosition);
   updateActiveMarkerContext(markerWorldPosition, {                                                                              // forward world position + attributes to watcher
     name: markerName,
     objectType: markerObjectType,

@@ -1,4 +1,3 @@
-// @ts-check
 import { loadModelAutoDetect } from "./core/utils.js";              // load IFC or FRAG on startup
 import { createViewerEngine } from "./core/viewer.js";
 import { setComposerReference } from "./modules/chat/chat.js";
@@ -15,7 +14,7 @@ async function init() { // wrap startup in async init to avoid top-level await p
 
   const { engineComponents, world, fragments } = await createViewerEngine(viewerContainer);// creates viewer engine and scene
 
-  window.applyChatSelHighlight = sel => applySelHighlight(engineComponents, sel);          // re-applies highlight in 3D scene - chat clicks in 3D
+  window.applyChatSelHighlight = (sel: { modelId: string; itemId: number }) => applySelHighlight(engineComponents, sel); // re-applies highlight in 3D scene - chat clicks in 3D
 
   async function fitCameraToSelBox(world: ViewerWorldType, sel: ModelSelectionType) { // focuses camera on the selected area
     const camControls = world.camera.controls;                  // use camera controls once

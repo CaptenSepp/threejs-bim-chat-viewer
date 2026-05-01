@@ -5,13 +5,11 @@ import { parseHttpRequestJsonBody, sendHttpJsonResponse } from './vite.chat-prox
 import { shouldHandleAssistantReplyRequest, buildPromptData, getGoogleModels, fetchAssistantReplyText } from './vite.chat-proxy-helpers.js';
 import type { Plugin, ViteDevServer } from 'vite';
 
-/** @returns {import('vite').Plugin} */
 export default function createChatProxyPlugin(): Plugin {                                                                   // creates the chat proxy Vite plugin, Vite reads this and adds plugin to the dev server
   // "Plugin" here means "extra behavior" added to the dev server
   return {
     name: 'chat-proxy',                                                                                                     // plugin name (for Vite debug output)
 
-    /** @param {import('vite').ViteDevServer} devServer */
     configureServer(devServer: ViteDevServer) {                                                                             // hook into Vite dev server (middleware registration), Vite calls this when it starts the dev server.
 
       devServer.middlewares.use(async (httpRequest, httpResponse, nextMiddleware) => {                                      // add an express-style middleware to intercept requests (registration function), dev server is Vite's server instance
