@@ -1,0 +1,3150 @@
+# Teaching Map: Debug-Style Chains (Full Project)
+
+This document is for teaching the code flow in debug order.
+It keeps the same chain style you liked, but with more detail.
+
+## 0) Quick Scope
+What this block gives you: a fast map of what runs in browser runtime, what runs only in dev server, and what is a separate tool script.
+
+- Runtime browser app starts from `index.html` -> `/src/main.js`.
+- AI route during `npm run dev` is handled by Vite plugin files in `tools/`.
+- `tools/ifc-to-frag.js` is a separate CLI conversion chain (not browser runtime).
+
+## 1) App Startup Chain (`src/main.js`)
+What this block gives you: exact startup order from first script load until app is interactive, including error hooks.
+
+1. `index.html` loads `/src/main.js` and has required DOM ids (`three-canvas`, `chat-*`, templates).
+2. `viewerContainer = document.getElementById("three-canvas")` is resolved first.
+3. `init()` starts (async).
+4. `createViewerEngine(viewerContainer)` is called.
+5. Return is destructured to `engineComponents`, `world`, `fragments`.
+6. `window.applyChatSelHighlight = sel => applySelHighlight(engineComponents, sel)` is assigned.
+- Data passed later through this bridge: `sel = { modelId, itemId }`.
+- Purpose: chat reference chip can trigger 3D highlight.
+7. Inner helper `fitCameraToSelBox(world, sel)` exists, uses `camControls`, checks `sel.box`, and can call `camControls.fitToBox(sel.box, true)`.
+- Purpose: prepared camera focus step (currently not called).
+8. Inner helper `applySelEffects(sel)` is created as the main click result pipeline.
+9. Inside `applySelEffects(sel)`:
+- `applySelHighlight(engineComponents, sel)` updates 3D highlight.
+- `markerAttributes = await renderMarkerForSel(engineComponents, world, sel)`.
+- `localIdLabel` is chosen from `markerAttributes.localId` fallback to `sel.itemId`.
+- `setComposerReference({ label, modelId, itemId, attributes })` stores chat reference.
+10. `setRaycastEvents(engineComponents, world, applySelEffects)` wires click + Escape key behavior.
+11. `await loadModelAutoDetect(engineComponents, fragments, "/fragments/school_str.frag")` starts model load.
+12. `setMarker(engineComponents)` prepares marker service and template clone.
+13. `initMarkerVisibilityWatcher(world)` starts offscreen banner watcher.
+14. `init().catch(err => ...)` catches startup errors, builds `msg`, calls `displayUserErrorSnackbar(msg)`.
+15. Global handlers:
+- `window.addEventListener("error", (e) => { const m = ...; displayUserErrorSnackbar(m); })`.
+- `window.addEventListener("unhandledrejection", (e) => { const r = e.reason; const m = ...; displayUserErrorSnackbar(m); })`.
+
+## 2) Viewer Engine Build Chain (`src/core/viewer.js`)
+What this block gives you: how engine objects are created and connected (scene, camera, renderer, fragments worker, render loop).
+
+1. `createViewerEngine(viewerContainer)` starts.
+2. `engineComponents = new TOC.Components()` is created.
+3. `worlds = engineComponents.get(TOC.Worlds)` and `world = worlds.create()`.
+4. `simpleScene = new TOC.SimpleScene(engineComponents)`; then `world.scene = simpleScene`; `simpleScene.setup()`.
+5. Scene background is set to transparent with `(world.scene.three).background = null`.
+6. `world.renderer = new TOF.PostproductionRenderer(engineComponents, viewerContainer)`.
+7. `world.camera = new TOC.OrthoPerspectiveCamera(engineComponents)`.
+8. `await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25)` sets initial camera position.
+9. `engineComponents.init()` starts ThatOpen services.
+10. `engineComponents.get(TOC.Grids).create(world)` adds grid helper.
+11. `fragments = engineComponents.get(TOC.FragmentsManager)`.
+12. `fragmentWorkerUrl` is set to hosted worker URL.
+13. `workerObjectUrl = await createWorkerObjectUrl(fragmentWorkerUrl)`.
+14. `fragments.init(workerObjectUrl)` starts fragments worker.
+15. Camera change listener: `world.camera.controls.addEventListener("change", () => fragments.core.update(true))`.
+16. Model-added listener: `fragments.list.onItemSet.add(({ value: model }) => { ... })`.
+- `model.useCamera(world.camera.three)` binds camera.
+- `world.scene.three.add(model.object)` adds drawable object.
+- `fragments.core.update(true)` refreshes.
+17. Render loop:
+- `isRendering = true`.
+- `world.renderer.three.setAnimationLoop(() => { if (isRendering) world.renderer.update(); })`.
+- `document.visibilitychange` toggles `isRendering = !document.hidden`.
+18. Return `{ engineComponents, world, fragments }`.
+
+## 3) Model Load Chain (`src/core/utils.js`)
+What this block gives you: how files are fetched, how type is detected (`.frag`/`.ifc`), and what data is returned/passed next.
+
+### 3.1 Shared fetch helper
+1. `fetchOrThrow(resource, errorPrefix)` calls `fetch(resource)`.
+2. Uses local `res`.
+3. If `!res.ok`, throws `new Error(...)` with HTTP details.
+4. Returns `res` otherwise.
+
+### 3.2 Worker URL creation
+1. `createWorkerObjectUrl(url)` calls `fetchOrThrow(url, "Failed to fetch worker at")`.
+2. Gets `workerResponse`, then `workerBlob = await workerResponse.blob()`.
+3. Creates `workerFile = new File([workerBlob], "worker.mjs", { type: "text/javascript" })`.
+4. Returns `URL.createObjectURL(workerFile)`.
+5. On `error`, calls `displayUserErrorSnackbar(...)` and throws new Error.
+
+### 3.3 `.frag` load path
+1. `loadFragmentsFromPath(fragments, path)` calls `fetchOrThrow(path, ...)` -> `file`.
+2. `buffer = await file.arrayBuffer()`.
+3. Path normalization vars:
+- `normalizedPath`
+- `trimmedPath`
+- `modelId`
+- `fileTail`
+4. Final call: `await fragments.core.load(buffer, { modelId })`.
+5. Catch block logs and shows snackbar.
+
+### 3.4 `.ifc` load path
+1. `loadIfcFromPath(components, path)` calls `fetchOrThrow(path, ...)` -> `file`.
+2. `buffer = await file.arrayBuffer()`; `bytes = new Uint8Array(buffer)`.
+3. `ifcLoader = components.get(IfcLoader)`.
+4. `await ifcLoader.setup({ autoSetWasm: false, wasm: { path, absolute: true } })`.
+5. Same normalization vars (`normalizedPath`, `trimmedPath`, `modelId`, `fileTail`).
+6. `await ifcLoader.load(bytes, true, modelId)`.
+7. Catch logs and snackbar.
+
+### 3.5 Auto detect and text escape
+1. `loadModelAutoDetect(components, fragments, path)` sets `safePath = String(path || "").trim()`.
+2. If `safePath` empty or ends with `.frag` -> `return loadFragmentsFromPath(...)`.
+3. If ends with `.ifc` -> `return loadIfcFromPath(...)`.
+4. Else shows snackbar `Unbekannter Dateityp`.
+5. `escapeHTML(str)` sets `s = String(str ?? "undefined!")`, then replaces special chars with HTML entities.
+
+## 4) Raycast + Selection + Highlight Chain
+What this block gives you: click-to-selection runtime path, including what `sel` contains and when highlight updates happen.
+
+### 4.1 Event wiring (`src/modules/target/raycaster.js`)
+1. `cssPrimaryColor` reads CSS var `--primary` or falls back to `#FF0000`.
+2. `SELECTION_HIGHLIGHT_STYLE` contains:
+- `color: new THREE.Color(cssPrimaryColor || "#FF0000")`
+- `renderedFaces: FRAGS.RenderedFaces.ONE`
+- `opacity: 0.6`
+- `transparent: true`
+3. `setRaycastEvents(engineComponents, world, applySelEffects)` creates:
+- `raycaster = engineComponents.get(Raycasters).get(world)`
+- `canvas = world.renderer.three.domElement`
+4. Canvas click calls `handleCanvasClick(event, engineComponents, raycaster, applySelEffects)`.
+5. Document keydown calls `handleEscapeKey(e, engineComponents)`.
+6. `applySelHighlight(components, sel)` builds `withMouseSelected = { [sel.modelId]: [sel.itemId] }`.
+7. `fragMan = components.get(FragmentsManager)`.
+8. `fragMan.resetHighlight()` -> `fragMan.highlight(SELECTION_HIGHLIGHT_STYLE, withMouseSelected)` -> `fragMan.core?.update(true)`.
+
+### 4.2 Click handling (`src/modules/target/raycaster-helpers.js`)
+1. `handleCanvasClick(event, engineComponents, raycaster, applySelEffects)` starts.
+2. `raycaster.mouse.updateMouseInfo(event)` aligns mouse.
+3. `rayHit = await raycaster.castRay()`.
+4. If hit exists:
+- `sel = await buildSelFromRayHit(engineComponents, rayHit)`
+- `applySelEffects(sel)` called.
+5. `buildSelFromRayHit(engineComponents, rayHit)`:
+- Reads `modelId = rayHit.fragments.modelId`
+- Reads `itemId = rayHit.localId`
+- Starts `sel = { modelId, itemId }`
+- Gets `fragMan = engineComponents.get(FragmentsManager)`
+- If `fragMan.getBBoxes` exists: `[bBox] = await fragMan.getBBoxes({ [modelId]: [itemId] })`
+- `vector3Center = bBox.getCenter(new THREE.Vector3())`
+- Enriches `sel = { modelId, itemId, center: vector3Center, box: bBox }`
+- Returns `sel`
+6. `handleEscapeKey(e, engineComponents)`:
+- If `e.key === "Escape"`
+- Gets `fragMan`
+- `fragMan.resetHighlight()`
+- `fragMan.core?.update(true)`
+- `removeActiveMarker()`.
+
+## 5) Marker Creation + Attribute Chain
+What this block gives you: how selected element metadata is read, transformed, and shown as marker + chat reference data.
+
+### 5.1 Marker service (`src/modules/target/marker.js`)
+1. Module state vars:
+- `markerServInst`
+- `markerLabelElemTemp`
+- `activeMarkerInstId`
+2. `setMarker(engineComponents)`:
+- `markerTemplateElement = document.getElementById("marker-template")`
+- clones template into `markerLabelElemTemp`
+- `markerServInst = engineComponents.get(ThatOpenFront.Marker)`
+3. `renderMarkerForSel(engineComponents, world, sel)`:
+- `attrs = await getSelectionAttributes(engineComponents, sel)`
+- `createMarkerValues(attrs)` returns `markerName`, `markerObjectType`, `markerTag`, `markerCategory`, `markerLocalId`
+- `applyMarkerLabelValues(markerLabelElemTemp, ...)`
+- `markerWorldPosition = computeMarkerWorldPosition(sel)`
+- `activeMarkerInstId = updateMarkerInstance(markerServInst, activeMarkerInstId, world, markerLabelElemTemp, markerWorldPosition)`
+- `updateActiveMarkerContext(markerWorldPosition, { name, objectType, tag, category, localId })`
+- returns `{ name, objectType, tag, category, localId }`
+4. `removeActiveMarker()`:
+- If `activeMarkerInstId`, call `markerServInst.delete(activeMarkerInstId)` then set `activeMarkerInstId = null`
+- Always calls `clearActiveMarkerContext()`.
+
+### 5.2 Marker helpers (`src/modules/target/marker-helpers.js`)
+1. `getSelectionAttributes(engineComponents, sel)`:
+- `fragmentsManager = engineComponents.get(EngineFragmentsManager)`
+- `attributesByModel = await fragmentsManager.getData({ [sel.modelId]: [sel.itemId] })`
+- `attrs = attributesByModel[sel.modelId][0]`
+- returns `attrs`
+2. `createMarkerValues(attrs)`:
+- local helper `asPlainValue(v)` unwraps `{ value: ... }`
+- creates `markerName`, `markerObjectType`, `markerTag`, `markerCategory`, `markerLocalId`
+- fallback text is `"Not mentioned!"`
+- returns object with these 5 values
+3. `applyMarkerLabelValues(markerLabelElemTemp, markerName, markerObjectType, markerTag, markerCategory, markerLocalId)` writes values into `.val-*` elements.
+4. `computeMarkerWorldPosition(sel)`:
+- `markerWorldPosition = sel.center.clone()`
+- `markerWorldPosition.y += 6`
+- returns position
+5. `updateMarkerInstance(markerServInst, activeMarkerInstId, world, markerLabelElemTemp, markerWorldPosition)`:
+- deletes old marker if present
+- creates new one with `markerServInst.create(world, markerLabelElemTemp, markerWorldPosition, true)`
+- returns `newActiveMarkerInstId`.
+
+## 6) Offscreen Marker Banner Chain (`src/modules/target/marker-visibility.js`)
+What this block gives you: the camera-driven visibility logic that decides show/hide of the top-right marker banner.
+
+1. Module state vars:
+- `activeMarkerWorldPos`
+- `activeMarkerAttrs`
+- `cameraThree`
+- `camControls`
+2. `initMarkerVisibilityWatcher(world)`:
+- `cameraThree = world.camera.three`
+- `camControls = world.camera.controls`
+- subscribes `camControls.addEventListener("change", onCameraChange)`
+- subscribes `camControls.addEventListener("update", onCameraChange)`
+3. `updateActiveMarkerContext(markerWorldPos, markerAttrs)`:
+- stores `activeMarkerWorldPos` (clone)
+- stores `activeMarkerAttrs`
+- calls `recalcAndToggleBanner()` immediately
+4. `clearActiveMarkerContext()`:
+- nulls marker state vars
+- calls `hideOffscreenBanner()`
+5. `onCameraChange()` calls `recalcAndToggleBanner()`.
+6. `recalcAndToggleBanner()`:
+- if missing marker/camera -> hide and return
+- `visible = isWorldPosInView(activeMarkerWorldPos, cameraThree)`
+- if `!visible && activeMarkerAttrs`:
+  - `html = buildBannerHtml(activeMarkerAttrs)`
+  - `displayOffscreenBanner(html)`
+- else hide banner
+7. `isWorldPosInView(worldPos, camera)`:
+- `ndc = worldPos.clone().project(camera)`
+- returns bounds check for `ndc.x`, `ndc.y`, `ndc.z` in `[-1, 1]`
+8. `buildBannerHtml(attrs)`:
+- gets `tpl = document.getElementById("marker-banner-template")`
+- clones template element
+- fills values via `applyMarkerLabelValues(...)`
+- returns `element.outerHTML`
+- fallback returns `""`.
+
+## 7) Chat UI + State + AI Request Chain
+What this block gives you: full message path from keyboard submit to localStorage render and optional AI response.
+
+### 7.1 DOM refs and message render (`src/modules/chat/components/chat-ui.js`)
+1. Exported DOM variables:
+- `chatMessages`
+- `inputForm`
+- `inputField`
+- `referenceContainer`
+- `referenceLabel`
+- `clearReferenceBtn`
+- `aiToggle`
+2. `createReferenceChip(reference)`:
+- creates `clickableRefTag`
+- writes `textContent = reference.label`
+- stores `dataset.modelId`, `dataset.itemId`
+- on click, if item id exists, calls `window.applyChatSelHighlight({ modelId, itemId: +dataset.itemId })`
+- returns chip element
+3. `appendMessageToChat({ text, time, reference, sender })`:
+- `msgWrapper`, `isSelf`, optional `ref` chip
+- `chatMsgContainer.innerHTML = escapeHTML(text)`
+- `chatMeta` time from `new Date(time).toLocaleTimeString(...)`
+- appends to `chatMessages`
+- scrolls with `chatMessages.scrollTop = chatMessages.scrollHeight`.
+
+### 7.2 Chat memory and AI side (`src/modules/chat/chat-helpers.js`)
+1. `STORAGE_KEY = "chat-history"`.
+2. `messageHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")`.
+3. `pushHistoryUserMessage(userMessage)`:
+- pushes to array
+- writes localStorage
+- calls `appendMessageToChat(userMessage)`
+4. `pushAssistantMessage(assistantMessage)` same 3 actions for assistant text.
+5. `pushErrorMessage(errMsg)` same 3 actions for system error text.
+6. `handleAssistantResponse(text, userMessage)`:
+- calls `requestAssistantReplyForUserMessage({ userMessageText: text, previousChatHistory: messageHistory, selectedModelReference: userMessage.reference })`
+- result stored in `assistantReplyText`
+- creates `assistantMessage = { time, reference: null, text: assistantReplyText || "...", sender: "assistant" }`
+- pushes assistant message
+- on `err`, creates `errMsg = { time, reference: null, text: "Fehler: ...", sender: "system" }`
+- pushes error and calls `displayUserErrorSnackbar(errMsg.text)`.
+
+### 7.3 Chat orchestration (`src/modules/chat/chat.js`)
+1. Module state: `currentReference = null`.
+2. `setComposerReference(referenceObject)`:
+- sets `currentReference`
+- updates `referenceLabel.textContent`
+- removes hidden class from `referenceContainer`
+3. `clearComposerReference()`:
+- nulls `currentReference`
+- clears label
+- adds hidden class
+4. `clearReferenceBtn.addEventListener("click", clearComposerReference)`.
+5. `inputField.keydown`:
+- if Enter and not Shift, prevent default
+- dispatches form submit event
+6. `inputForm.submit` handler:
+- prevents default
+- reads `text = inputField.value.trim()`
+- if empty return
+- builds `userMessage = { time, reference: currentReference, text, sender: "user" }`
+- calls `pushHistoryUserMessage(userMessage)`
+- clears input and focuses field
+- calls `clearComposerReference()`
+- if `aiToggle && aiToggle.checked`, awaits `handleAssistantResponse(text, userMessage)`
+7. Initial render: `messageHistory.forEach(appendMessageToChat)`.
+
+## 8) Browser HTTP Chain (`src/services/http-client.js` + `src/api/request-assistant-reply-api.js`)
+What this block gives you: exact browser request layer behavior, including success parsing and error propagation/snackbar behavior.
+
+1. `requestAssistantReplyForUserMessage({ userMessageText, previousChatHistory = [], selectedModelReference = null })` uses dynamic import:
+- `const { postReqWithJson: postJson } = await import("../services/http-client.js")`
+2. Calls:
+- `data = await postJson("/api/assistant-reply", { message: userMessageText, history: previousChatHistory, reference: selectedModelReference })`
+3. Returns `data?.reply || ""`.
+4. HTTP helper internals:
+- `readTextSafely(res)` returns `await res.text()` or `""`.
+- `parseJson(res, onErrorPrefix)` checks `res.ok`.
+- on error builds `msg`, calls `displayUserErrorSnackbar(msg)`, throws.
+- success returns `res.json()`.
+5. `getReqWithJson(url, { headers = {}, signal } = {})` calls `fetch(...GET...)` then `parseJson`.
+6. `postReqWithJson(url, body, { headers = {}, signal } = {})` calls `fetch(...POST JSON...)` then `parseJson`.
+
+## 9) Dev AI Proxy Chain (`tools/vite.chat-proxy*.js`)
+What this block gives you: server-side dev middleware flow for `/api/assistant-reply`, prompt building, and upstream Gemini call order.
+
+### 9.1 Plugin entry (`tools/vite.chat-proxy.js`)
+1. `createChatProxyPlugin()` returns plugin object `{ name, configureServer }`.
+2. `name = "chat-proxy"`.
+3. `configureServer(devServer)` registers middleware with `devServer.middlewares.use(...)`.
+4. Middleware args: `httpRequest`, `httpResponse`, `nextMiddleware`.
+5. First gate: `shouldHandleAssistantReplyRequest(httpRequest)`.
+- If false -> `nextMiddleware()`.
+6. Body read: `requestBody = await parseHttpRequestJsonBody(httpRequest)`.
+7. Prompt prep: `{ userMessageText, promptText } = buildPromptData(requestBody)`.
+8. Empty text -> `sendHttpJsonResponse(httpResponse, 400, { error: "Missing message" })`.
+9. Env key read: `openAiApiKey = process.env.GOOGLE_API_KEY`.
+10. Missing key -> 500 JSON error.
+11. `googleModels = getGoogleModels()`.
+12. `assistantReplyText = await fetchAssistantReplyText(googleModels, promptText, openAiApiKey)`.
+13. Empty assistant reply -> 502 JSON error.
+14. Success -> `sendHttpJsonResponse(httpResponse, 200, { reply: assistantReplyText })`.
+15. Catch -> 500 JSON `Server error`.
+
+### 9.2 Prompt and upstream request (`tools/vite.chat-proxy-helpers.js`)
+1. `shouldHandleAssistantReplyRequest(httpRequest)` checks:
+- `httpRequest.method === "POST"`
+- `httpRequest.url?.startsWith("/api/assistant-reply")`
+2. `buildPromptData(requestBody)`:
+- `userMessageText = (requestBody?.message ?? "").toString().trim()`
+- `referencePromptSuffix = buildReferenceSummaryForPrompt(requestBody?.reference)`
+- `contextIntro` depends on presence of reference
+- `historyJson = stringifyChatHistoryForPrompt(requestBody?.history)`
+- `promptText` combines intro + reference + history + message
+- returns `{ userMessageText, promptText }`
+3. `getGoogleModels()` parses `process.env.GOOGLE_MODELS` or default list, then `.split(",").map(...).filter(Boolean)`.
+4. `fetchAssistantReplyText(googleModels, promptText, openAiApiKey)`:
+- sets `assistantReplyText = ""`
+- loops `for (const model of googleModels)`
+- sends fetch POST to Google endpoint URL built with `encodeURIComponent(model)` and API key
+- request body includes `contents` and `generationConfig`
+- if response ok:
+  - `openAiResponseJson = await openAiHttpResponse.json()`
+  - extracts candidate text into `assistantReplyText`
+  - `break`
+- if not ok:
+  - logs status and body
+  - breaks on non retryable status
+- returns `assistantReplyText`
+
+### 9.3 Proxy data helpers (`tools/vite.chat-proxy-data.js`)
+1. `parseHttpRequestJsonBody(incomingHttpRequest)`:
+- creates Promise
+- local `accumulatedRequestBodyText = ""`
+- `data` event appends chunk
+- `end` event parses JSON or `{}`
+- parse error rejects with `requestBodyParseError`
+- `error` event rejects
+2. `buildReferenceSummaryForPrompt(referencePayload)`:
+- validates object
+- local helper `stringifyReferenceValue(value)`
+- `referenceSummarySegments = []`
+- pushes `Model ID` and `Item ID`
+- extracts `referenceAttributesSource` and safe object `referenceAttributes`
+- creates `referenceAttributePairs` list with Name/Object Type/Tag/Category/Local ID
+- builds `referenceSummaryText`
+- pushes to segments
+- returns final multiline string starting with `Referenzdaten:`
+3. `sendHttpJsonResponse(outgoingHttpResponse, responseStatusCode, responseBodyPayload)`:
+- sets `statusCode`
+- sets `Content-Type`
+- ends with `JSON.stringify(responseBodyPayload)`
+4. `stringifyChatHistoryForPrompt(historyPayload)`:
+- returns `"[]"` if not array
+- tries `JSON.stringify(historyPayload)`
+- catch fallback `"[]"`.
+
+## 10) UI Utility Chains
+What this block gives you: isolated UI helper behavior for error snackbar and offscreen banner host element lifecycle.
+
+### 10.1 Snackbar (`src/ui/error-notify.js`)
+1. Module state vars: `ErrorSnackElem`, `ErrorSnackTimer`.
+2. `displayUserErrorSnackbar(messageText = "Ein Fehler ist aufgetreten", durationMs = 10000)`:
+- creates snackbar element once if missing
+- sets id `app-error-snackbar`
+- sets ARIA role `alert`
+- appends to body
+- updates `textContent`
+- adds class `visible`
+- clears existing timer
+- schedules hide with `setTimeout` and stores timer id in `ErrorSnackTimer`.
+
+### 10.2 Offscreen banner host (`src/ui/marker-banner.js`)
+1. Module var: `OffscreenBannerElem`.
+2. `ensureOffscreenBannerElemExist()` creates one element with id `app-marker-banner`, role `status`, appends body, returns it.
+3. `displayOffscreenBanner(htmlContent)` gets element via ensure function, writes `innerHTML`, adds `visible`.
+4. `hideOffscreenBanner()` removes `visible` if element exists.
+
+## 11) Type contract (`src/types/global.d.ts`)
+What this block gives you: the global type guarantee that lets chat chips call the 3D highlight bridge safely.
+
+1. Extends `Window` with `applyChatSelHighlight(sel)` where `sel` has `modelId: string` and `itemId: number`.
+2. Purpose: TypeScript/JSDoc knows that global function exists.
+
+## 12) Config + HTML Glue
+What this block gives you: startup glue files that wire runtime pieces together (plugin registration, DOM/template availability).
+
+### 12.1 Vite config (`vite.config.js`)
+1. `ChatProxyPlugin` imported from `./tools/vite.chat-proxy.js`.
+2. `export default` config object has:
+- `assetsInclude: ["**/*.ifc", "**/*.wasm"]`
+- `test.environment = "jsdom"`
+- `test.include = ["tests/**/*.test.js"]`
+- `test.globals = true`
+- `plugins = [ChatProxyPlugin()]`
+
+### 12.2 HTML (`index.html`)
+1. Provides containers used by JS:
+- `#three-canvas`
+- `#chat-messages`
+- `#input-form`
+- `#input-field`
+- `#chat-reference-container`
+- `#chat-reference-label`
+- `#clear-reference-btn`
+- `#ai-toggle`
+2. Provides templates used by marker modules:
+- `#marker-template`
+- `#marker-banner-template`
+3. Starts app via `<script type="module" src="/src/main.js"></script>`.
+
+## 13) Separate Tool Script Chain (`tools/ifc-to-frag.js`)
+What this block gives you: standalone conversion pipeline order (IFC bytes -> FRAG bytes) outside browser runtime.
+
+1. Top-level path vars:
+- `__filename`
+- `__dirname`
+- `projectRootAbsPath`
+- `inputIfcModelPath`
+- `outputFragModelPath`
+- `webIfcWasmDirectory`
+2. `convertIfcToFrag()`:
+- reads input IFC bytes as `inputIfcFileBytes`
+- creates `ifcImporter = new IfcImporter()`
+- sets `ifcImporter.wasm.path` and `ifcImporter.wasm.absolute = true`
+- converts via `outputFragFileBytes = await ifcImporter.process({ bytes: inputIfcFileBytes })`
+- ensures output folder exists with `fs.mkdirSync(..., { recursive: true })`
+- writes output via `fs.writeFileSync(outputFragModelPath, Buffer.from(outputFragFileBytes))`
+- logs success
+3. `convertIfcToFrag().catch((err) => { ... process.exit(1); })` handles CLI errors.
+
+## 14) Full Symbol Coverage Checklist (functions + key variables)
+What this block gives you: quick verification list so you can check that every file symbol is represented in your teaching material.
+
+### `src/main.js`
+- Functions: `init`, `fitCameraToSelBox`, `applySelEffects`.
+- Variables: `viewerContainer`, `engineComponents`, `world`, `fragments`, `camControls`, `markerAttributes`, `localIdLabel`, `msg`, `m`, `r`.
+
+### `src/api/request-assistant-reply-api.js`
+- Function: `requestAssistantReplyForUserMessage`.
+- Variables: `postJson`, `data`, `userMessageText`, `previousChatHistory`, `selectedModelReference`.
+
+### `src/core/utils.js`
+- Functions: `fetchOrThrow`, `createWorkerObjectUrl`, `loadFragmentsFromPath`, `loadIfcFromPath`, `loadModelAutoDetect`, `escapeHTML`.
+- Variables: `res`, `workerResponse`, `workerBlob`, `workerFile`, `file`, `buffer`, `normalizedPath`, `trimmedPath`, `modelId`, `fileTail`, `bytes`, `ifcLoader`, `safePath`, `s`.
+
+### `src/core/viewer.js`
+- Function: `createViewerEngine`.
+- Variables: `TOC`, `TOF`, `engineComponents`, `worlds`, `world`, `simpleScene`, `fragments`, `fragmentWorkerUrl`, `workerObjectUrl`, `model`, `isRendering`.
+
+### `src/modules/chat/components/chat-ui.js`
+- Functions: `createReferenceChip`, `appendMessageToChat`.
+- Variables: `chatMessages`, `inputForm`, `inputField`, `referenceContainer`, `referenceLabel`, `clearReferenceBtn`, `aiToggle`, `clickableRefTag`, `msgWrapper`, `isSelf`, `ref`, `chatMsgContainer`, `chatMeta`.
+
+### `src/modules/chat/chat-helpers.js`
+- Functions: `pushHistoryUserMessage`, `pushAssistantMessage`, `pushErrorMessage`, `handleAssistantResponse`.
+- Variables: `STORAGE_KEY`, `messageHistory`, `assistantReplyText`, `assistantMessage`, `errMsg`, `text`, `userMessage`, `err`.
+
+### `src/modules/chat/chat.js`
+- Functions: `setComposerReference`, `clearComposerReference`.
+- Event callbacks: keydown callback, submit callback.
+- Variables: `currentReference`, `e`, `text`, `userMessage`.
+
+### `src/modules/target/marker-helpers.js`
+- Functions: `getSelectionAttributes`, `createMarkerValues`, `applyMarkerLabelValues`, `computeMarkerWorldPosition`, `updateMarkerInstance`.
+- Variables: `fragmentsManager`, `attributesByModel`, `attrs`, `asPlainValue`, `markerName`, `markerObjectType`, `markerTag`, `markerCategory`, `markerLocalId`, `markerWorldPosition`, `newActiveMarkerInstId`.
+
+### `src/modules/target/marker-visibility.js`
+- Functions: `initMarkerVisibilityWatcher`, `updateActiveMarkerContext`, `clearActiveMarkerContext`, `onCameraChange`, `recalcAndToggleBanner`, `isWorldPosInView`, `buildBannerHtml`.
+- Variables: `activeMarkerWorldPos`, `activeMarkerAttrs`, `cameraThree`, `camControls`, `visible`, `html`, `ndc`, `tpl`, `element`, `attrs`.
+
+### `src/modules/target/marker.js`
+- Functions: `setMarker`, `renderMarkerForSel`, `removeActiveMarker`.
+- Variables: `markerServInst`, `markerLabelElemTemp`, `activeMarkerInstId`, `markerTemplateElement`, `attrs`, `markerName`, `markerObjectType`, `markerTag`, `markerCategory`, `markerLocalId`, `markerWorldPosition`.
+
+### `src/modules/target/raycaster-helpers.js`
+- Functions: `buildSelFromRayHit`, `handleCanvasClick`, `handleEscapeKey`.
+- Variables: `modelId`, `itemId`, `sel`, `fragMan`, `bBox`, `vector3Center`, `rayHit`, `event`, `e`.
+
+### `src/modules/target/raycaster.js`
+- Functions: `setRaycastEvents`, `applySelHighlight`.
+- Constants/variables: `cssPrimaryColor`, `SELECTION_HIGHLIGHT_STYLE`, `raycaster`, `canvas`, `withMouseSelected`, `fragMan`.
+
+### `src/services/http-client.js`
+- Functions: `readTextSafely`, `parseJson`, `getReqWithJson`, `postReqWithJson`.
+- Variables: `res`, `text`, `msg`, `url`, `body`, `headers`, `signal`.
+
+### `src/types/global.d.ts`
+- Type member: `Window.applyChatSelHighlight`.
+- Variables inside type: `sel.modelId`, `sel.itemId`.
+
+### `src/ui/error-notify.js`
+- Function: `displayUserErrorSnackbar`.
+- Variables: `ErrorSnackElem`, `ErrorSnackTimer`, `messageText`, `durationMs`.
+
+### `src/ui/marker-banner.js`
+- Functions: `ensureOffscreenBannerElemExist`, `displayOffscreenBanner`, `hideOffscreenBanner`.
+- Variables: `OffscreenBannerElem`, `el`, `htmlContent`.
+
+### `tools/vite.chat-proxy.js`
+- Function: `createChatProxyPlugin` (default export), method `configureServer`.
+- Middleware variables: `httpRequest`, `httpResponse`, `nextMiddleware`, `requestBody`, `userMessageText`, `promptText`, `openAiApiKey`, `googleModels`, `assistantReplyText`.
+
+### `tools/vite.chat-proxy-helpers.js`
+- Functions: `shouldHandleAssistantReplyRequest`, `buildPromptData`, `getGoogleModels`, `fetchAssistantReplyText`.
+- Variables: `userMessageText`, `referencePromptSuffix`, `contextIntro`, `historyJson`, `promptText`, `assistantReplyText`, `model`, `openAiHttpResponse`, `openAiResponseJson`.
+
+### `tools/vite.chat-proxy-data.js`
+- Functions: `parseHttpRequestJsonBody`, `buildReferenceSummaryForPrompt`, `sendHttpJsonResponse`, `stringifyChatHistoryForPrompt`.
+- Variables: `accumulatedRequestBodyText`, `resolveRequestBody`, `rejectRequestBody`, `requestBodyParseError`, `stringifyReferenceValue`, `referenceSummarySegments`, `referenceAttributesSource`, `referenceAttributes`, `referenceAttributePairs`, `referenceSummaryText`, `outgoingHttpResponse`, `responseStatusCode`, `responseBodyPayload`, `historyPayload`.
+
+### `tools/ifc-to-frag.js`
+- Function: `convertIfcToFrag`.
+- Variables: `__filename`, `__dirname`, `projectRootAbsPath`, `inputIfcModelPath`, `outputFragModelPath`, `webIfcWasmDirectory`, `inputIfcFileBytes`, `ifcImporter`, `outputFragFileBytes`, `err`.
+
+## 15) Notes on Non-runtime Files
+What this block gives you: files that are intentionally outside the main runtime chains, and why they are separate.
+
+- `src/all-code.txt`: merged reference copy of source snippets; not the executed module entry graph.
+- `tests/*`: test execution flow, not browser runtime flow.
+- `package.json`: scripts/dependency metadata.
+
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\all-code.txt =====
+// @ts-check
+
+//Request an assistant reply for a user message
+//Input: object with userMessageText (string), previousChatHistory (array, optional), selectedModelReference (any, optional)
+//Output: Promise that resolves to assistant reply text (string)
+
+export async function requestAssistantReplyForUserMessage({ userMessageText, previousChatHistory = [], selectedModelReference = null }) {
+  // use shared client helper for JSON POST (standard headers, error handling, snackbar)
+  const { postReqWithJson: postJson } = await import('../services/http-client.js'); // import ony and when we need it
+  const data = await postJson('/api/assistant-reply', {                 // Send request to our API endpoint (dev proxy (or prod function)); insdie: fetch('/api/assistant-reply', { method: 'POST', … })
+    message: userMessageText,                                           // The actual text the user typed
+    history: previousChatHistory,                                       // short history of the chat
+    reference: selectedModelReference                                   // 3D selection reference to a selected model item
+  });
+  return data?.reply || '';                                             // Return assistant reply text or empty string if missing to keep UI stable when reply is absent
+}
+// @ts-check
+async function fetchOrThrow(resource, errorPrefix) {                                // fetches a resource and throws on HTTP error
+  const res = await fetch(resource);
+  if (!res.ok) {
+    throw new Error(`${errorPrefix} ${resource}: ${res.status} ${res.statusText}`); // include status code and text
+  }
+  return res;
+}
+
+export async function createWorkerObjectUrl(url) {
+  try {
+    const workerResponse = await fetchOrThrow(url, 'Failed to fetch worker at');
+    const workerBlob = await workerResponse.blob();
+    const workerFile = new File([workerBlob], "worker.mjs", { type: "text/javascript" });
+    return URL.createObjectURL(workerFile);
+  } catch (error) {
+    displayUserErrorSnackbar(`Worker konnte nicht geladen werden: ${url}`);                   // show a short snackbar in UI
+    throw new Error(`Error loading worker from ${url}: ${error.message}`);
+  }
+}
+
+export async function loadFragmentsFromPath(fragments, path = "/fragments/school_str.frag") { // /fragments/school_str.frag
+  try {
+    const file = await fetchOrThrow(path, 'Failed to fetch fragments at');
+    const buffer = await file.arrayBuffer();
+    const normalizedPath = path.replace(/\\/g, '/');        // normalize slashes for consistent model ids
+    const trimmedPath = normalizedPath.replace(/^\/+/, ''); // drop leading slashes to align with repo structure
+    let modelId = trimmedPath || 'model';                   // derive a stable identifier from the fragment path
+    const fileTail = modelId.split('/').pop() || modelId;   // collapse to last path segment for nicer ids
+    modelId = fileTail.replace(/\.frag$/i, '') || fileTail; // drop .frag suffix to keep clean name
+    await fragments.core.load(buffer, { modelId });         // register model with derived identifier so selections report current file
+  } catch (error) {
+    console.error(`Error loading fragments from ${path}:`, error);
+    displayUserErrorSnackbar(`Model konnte nicht geladen werden: ${path}`); // show a short snackbar in UI
+  }
+}
+
+export async function loadIfcFromPath(components, path = "/model/custom_psets.ifc") { // default IFC -> FRAG (online wasm)
+  try {
+    const file = await fetchOrThrow(path, 'Failed to fetch IFC at');
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);                           // convert to bytes for IfcLoader
+    const ifcLoader = components.get(IfcLoader);                    // get IFC loader from engine
+    await ifcLoader.setup({                                         // pin wasm CDN to avoid autoSetWasm fetch
+      autoSetWasm: false,
+      wasm: { path: "https://unpkg.com/web-ifc@0.0.70/", absolute: true },
+    });
+    const normalizedPath = path.replace(/\\/g, '/');                // normalize slashes for model id
+    const trimmedPath = normalizedPath.replace(/^\/+/, '');         // drop leading slashes
+    let modelId = trimmedPath || 'model';                           // stable id from path
+    const fileTail = modelId.split('/').pop() || modelId;           // last segment
+    modelId = fileTail.replace(/\.ifc$/i, '') || fileTail;          // drop .ifc extension
+    await ifcLoader.load(bytes, true, modelId);                     // convert IFC -> FRAG and load
+  } catch (error) {
+    console.error(`Error loading IFC from ${path}:`, error);
+    displayUserErrorSnackbar(`IFC konnte nicht geladen werden: ${path}`);
+  }
+}
+
+export async function loadModelAutoDetect(components, fragments, path) {            // choose IFC or FRAG by extension
+  const safePath = String(path || '').trim();
+  if (!safePath || safePath.toLowerCase().endsWith('.frag')) {
+    return loadFragmentsFromPath(fragments, safePath || undefined);
+  }
+  if (safePath.toLowerCase().endsWith('.ifc')) {
+    return loadIfcFromPath(components, safePath);
+  }
+  displayUserErrorSnackbar(`Unbekannter Dateityp: ${safePath || path}`);
+}
+
+export function escapeHTML(str) {        // replaces special characters with HTML-safe entities (escaping)
+  const s = String(str ?? 'undefined!'); // avoid undefined/null issues
+  return s.replace(/[&<>"']/g, m => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  }[m]));
+}
+import { IfcLoader } from "@thatopen/components";
+import { displayUserErrorSnackbar } from "../ui/error-notify.js";
+
+// @ts-check
+import * as TOC from "@thatopen/components"; // core engine classes (components)
+import * as TOF from "@thatopen/components-front";
+import { createWorkerObjectUrl } from "./utils.js";
+
+// sets up the 3D viewer and engine (initialization)
+export async function createViewerEngine(viewerContainer) {
+  const engineComponents = new TOC.Components();                                     // central service registry for the engine
+
+                                                                               
+  const worlds = engineComponents.get(TOC.Worlds);                                   // create world and scene
+  const world = worlds.create();
+  const simpleScene = /** @type {import('@thatopen/components').SimpleScene} */ (new TOC.SimpleScene(engineComponents));
+  world.scene = simpleScene;
+  simpleScene.setup();
+  (/** @type {import('three').Scene} */(world.scene.three)).background = null;       // transparent background (no color)
+
+                                                                               
+  world.renderer = new TOF.PostproductionRenderer(engineComponents, viewerContainer);// renderer and camera setup
+  world.camera = new TOC.OrthoPerspectiveCamera(engineComponents);
+  await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25);                   // set initial view position and target
+
+                                                                               
+  engineComponents.init();                                                           // initialize components and helpers (engine init)
+  engineComponents.get(TOC.Grids).create(world);                                     // show grid helper in the scene
+
+  // prepare fragments manager and worker
+  const fragments = engineComponents.get(TOC.FragmentsManager);
+  const fragmentWorkerUrl = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
+  const workerObjectUrl = await createWorkerObjectUrl(fragmentWorkerUrl);            // hosted worker URL to parse fragments off the main thread
+  fragments.init(workerObjectUrl);                                                   // boot fragments with the worker (init)
+
+  // keep fragments up-to-date with camera/scene changes
+  (/** @type {{ addEventListener(type: 'change' | 'update', listener: (e: unknown) => void): void }} */ (world.camera.controls)).addEventListener("change", () => fragments.core.update(true)); // recompute on camera move
+  fragments.list.onItemSet.add(({ value: model }) => {  // when a fragment model loads, attach it
+    model.useCamera(/** @type {import('three').PerspectiveCamera | import('three').OrthographicCamera} */(world.camera.three)); // link model shaders to camera (camera binding) to ensure correct uniforms
+    world.scene.three.add(model.object);                // add model to scene graph to render it
+    fragments.core.update(true);                        // force a render update
+  });
+
+  // render loop
+  let isRendering = true;
+  if (world.renderer.three?.setAnimationLoop) {
+    world.renderer.three.setAnimationLoop(() => {        // use rAF-based loop when available via requestAnimationFrame
+      if (isRendering) world.renderer.update();
+    });
+  }
+  document.addEventListener("visibilitychange", () => {  // pause/resume on tab visibility changes to save resources when hidden
+    isRendering = !document.hidden;
+  });
+
+  return { engineComponents, world, fragments };
+}
+// @ts-check
+import { escapeHTML } from "../../../core/utils.js";
+
+export const chatMessages = document.getElementById('chat-messages');
+export const inputForm = document.getElementById('input-form');
+export const inputField = document.getElementById('input-field');
+export const referenceContainer = document.getElementById('chat-reference-container');
+export const referenceLabel = document.getElementById('chat-reference-label');
+export const clearReferenceBtn = document.getElementById('clear-reference-btn');
+export const aiToggle = /** @type {HTMLInputElement | null} */ (document.getElementById('ai-toggle'));
+
+function createReferenceChip(reference) {                // creates a clickable chip that jumps back to the 3D selection (UI chip)
+  const clickableRefTag = document.createElement('div'); // container element for the chip
+  clickableRefTag.classList.add('message-reference');
+  clickableRefTag.textContent = reference.label;
+  clickableRefTag.dataset.modelId = reference.modelId;   // store modelId to target the correct model
+  clickableRefTag.dataset.itemId = reference.itemId;     // store itemId to target the specific element
+  clickableRefTag.addEventListener('click', () => {      // on click, re-select and highlight in 3D (interaction) to restore the selection from chat
+    if (clickableRefTag.dataset.itemId) {                // avoid missing id (guard) to prevent invalid highlighting
+      window.applyChatSelHighlight({                     // trigger global highlighter
+        modelId: clickableRefTag.dataset.modelId,
+        itemId: +clickableRefTag.dataset.itemId,         // convert to number (type cast) to ensure numeric id
+      });
+    }
+  });
+  return clickableRefTag;
+}
+
+export function appendMessageToChat({ text, time, reference, sender }) { // renders a message in the chat (DOM update)
+  const msgWrapper = document.createElement('div');       // build wrapper and mark as self (message DOM) to style it as the sender
+  const isSelf = sender ? sender === 'user' : true;       // decide side based on sender (default user/self for backwards-compat)
+  msgWrapper.classList.add('message-wrapper');
+  if (isSelf) msgWrapper.classList.add('self');           // only user messages get the 'self' style (orange, right)
+
+  if (reference && reference.label) {                     // if reference exists, show chip (context link) to associate the message with a selection
+    const ref = createReferenceChip(reference);           // reuse builder to keep DOM consistent
+    msgWrapper.appendChild(ref);                          // place chip above the message (layout)
+  }
+
+  const chatMsgContainer = document.createElement('div');
+  chatMsgContainer.classList.add('message');
+  chatMsgContainer.innerHTML = escapeHTML(text);          // escape user text before inserting (XSS protection)
+
+  const chatMeta = document.createElement('div');
+  chatMeta.classList.add('meta');
+  chatMeta.textContent = new Date(time).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  msgWrapper.appendChild(chatMsgContainer);
+  msgWrapper.appendChild(chatMeta);
+  chatMessages.appendChild(msgWrapper);
+  chatMessages.scrollTop = chatMessages.scrollHeight;   // auto-scroll to newest message (auto-scroll)
+}
+
+
+// @ts-check
+import { appendMessageToChat } from "./components/chat-ui.js";
+import { requestAssistantReplyForUserMessage } from "../../api/request-assistant-reply-api.js";
+import { displayUserErrorSnackbar } from "../../ui/error-notify.js";
+
+const STORAGE_KEY = 'chat-history';
+
+export const messageHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+export function pushHistoryUserMessage(userMessage) {
+  messageHistory.push(userMessage);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Push (Persist) to local storage to restore chat after reload
+  appendMessageToChat(userMessage);                                  // Render user message
+}
+
+function pushAssistantMessage(assistantMessage) {
+  messageHistory.push(assistantMessage);                             // Save assistant message to in-memory array
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist updated chat with the AI reply
+  appendMessageToChat(assistantMessage);                             // Show the AI answer in the chat UI
+}
+
+function pushErrorMessage(errMsg) {
+  messageHistory.push(errMsg);                                       // Store the error message in history (state)
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist the error in localStorage (persistence)
+  appendMessageToChat(errMsg);                                       // Show the error in the chat so the user knows (feedback)
+}
+
+/**
+ * @param {string} text
+ * @param {{ time?: number; reference: any; text?: string; sender?: string; }} userMessage
+ */
+export async function handleAssistantResponse(text, userMessage) {
+  try {                                                                    // Network or server errors (error handling)
+    const assistantReplyText = await requestAssistantReplyForUserMessage({ // Ask server for AI reply
+      userMessageText: text,                                               // The text the user types
+      previousChatHistory: messageHistory,                                 // Pass current chat history
+      selectedModelReference: userMessage.reference                        // Optional 3D selection pass the user message reference
+    });
+    const assistantMessage = { time: Date.now(), reference: null, text: assistantReplyText || '...', sender: 'assistant' }; // Build assistant message, mark as assistant/system side
+    pushAssistantMessage(assistantMessage);
+  } catch (err) {                                                          // Show a readable error message
+    const errMsg = { time: Date.now(), reference: null, text: `Fehler: ${(err && err.message) || 'Unbekannt'}`, sender: 'system' }; // Create an error message to display, mark as system
+    pushErrorMessage(errMsg);
+    displayUserErrorSnackbar(errMsg.text);
+  }
+}
+
+
+// @ts-check
+import { aiToggle, appendMessageToChat, clearReferenceBtn, inputField, inputForm, referenceContainer, referenceLabel } from "./components/chat-ui.js";
+import { handleAssistantResponse, messageHistory, pushHistoryUserMessage } from "./chat-helpers.js";
+
+let currentReference = null;                            // current selection reference and history
+
+// API
+export function setComposerReference(referenceObject) { // sets the current 3D selection as a chat reference to link a message to a picked item
+  currentReference = referenceObject;
+  referenceLabel.textContent = referenceObject.label;
+  referenceContainer.classList.remove('hidden');
+}
+
+export function clearComposerReference() {              // clears the current chat reference
+  currentReference = null;
+  referenceLabel.textContent = '';
+  referenceContainer.classList.add('hidden');
+}
+
+clearReferenceBtn.addEventListener('click', clearComposerReference);// event listeners for reference chip and input
+
+inputField.addEventListener('keydown', e => {           // send on Enter
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    inputForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  }
+});
+
+// Make the submit handler async so we can await the server reply
+inputForm.addEventListener('submit', async e => {                                              // collect message and append to UI to render the message
+  e.preventDefault();
+  const text = (/** @type {HTMLInputElement} */ (inputField)).value.trim();
+  if (!text) return;                                                                           // return empty if no text (do nothing)
+
+  const userMessage = { time: Date.now(), reference: currentReference, text, sender: 'user' }; // compose message object (payload) to store what we need for explicit user message object
+  pushHistoryUserMessage(userMessage);
+
+  (/** @type {HTMLInputElement} */ (inputField)).value = '';
+  inputField.focus();
+  clearComposerReference();
+
+  if (aiToggle && aiToggle.checked) {// Call AI only when the toggle is enabled
+    await handleAssistantResponse(text, userMessage);
+  }
+
+});
+
+messageHistory.forEach(appendMessageToChat);// render saved chat history
+// @ts-check
+import { FragmentsManager as EngineFragmentsManager } from "@thatopen/components";                       // engine service to access fragment data (attributes API)
+
+export async function getSelectionAttributes(engineComponents, sel) {
+  const fragmentsManager = engineComponents.get(EngineFragmentsManager);                                 // access fragment data service
+
+// fetch attributes for the selected item (attributes API -> object of key/value pairs)
+  const attributesByModel = await fragmentsManager.getData({ [sel.modelId]: [sel.itemId] });             // returns { [modelId]: [attrsForItem] }
+  const attrs = attributesByModel[sel.modelId][0];                                                       // take first (only) item attributes
+  return attrs;
+}
+
+export function createMarkerValues(attrs) {
+  const asPlainValue = (v) => (v && typeof v === "object" && "value" in v ? v.value : v);                // unwrap value objects to plain values (some entries are { value: X }) to normalize mixed shapes
+
+// fill overlay fields with attributes
+  const markerName = asPlainValue(attrs.Name) || 'Not mentioned!';                                       // reuse marker data for prompt
+  const markerObjectType = asPlainValue(attrs.ObjectType) || 'Not mentioned!';
+  const markerTag = asPlainValue(attrs.Tag) || 'Not mentioned!';
+  const markerCategory = asPlainValue(attrs._category) || 'Not mentioned!';
+  const markerLocalId = asPlainValue(attrs._localId) || 'Not mentioned!';
+  return { markerName, markerObjectType, markerTag, markerCategory, markerLocalId };
+}
+
+export function applyMarkerLabelValues(markerLabelElemTemp, markerName, markerObjectType, markerTag, markerCategory, markerLocalId) {
+  markerLabelElemTemp.querySelector(".val-name").textContent = markerName;
+  markerLabelElemTemp.querySelector(".val-objecttype").textContent = markerObjectType;
+  markerLabelElemTemp.querySelector(".val-tag").textContent = markerTag;
+  markerLabelElemTemp.querySelector(".val-category").textContent = markerCategory;
+  markerLabelElemTemp.querySelector(".val-localid").textContent = markerLocalId;
+}
+
+export function computeMarkerWorldPosition(sel) {
+  // place marker slightly above the selection (position = Vector3 in world space)
+  const markerWorldPosition = sel.center.clone();                        // clone center (avoid mutating selection.center)
+  markerWorldPosition.y += 6;                                            // offset in meters
+  return markerWorldPosition;
+}
+
+export function updateMarkerInstance(markerServInst, activeMarkerInstId, world, markerLabelElemTemp, markerWorldPosition) {
+  if (activeMarkerInstId) markerServInst.delete(activeMarkerInstId);     // remove previous marker
+  const newActiveMarkerInstId = markerServInst.create(                   // create new screen-space marker
+    world, markerLabelElemTemp, markerWorldPosition, true
+  );
+  return newActiveMarkerInstId;
+}
+
+// @ts-check
+import { displayOffscreenBanner, hideOffscreenBanner } from "../../ui/marker-banner.js";
+import { applyMarkerLabelValues } from "./marker-helpers.js";
+
+let activeMarkerWorldPos = null;                                              // current marker world position to project and test visibility
+let activeMarkerAttrs = null;                                                 // current marker attributes
+let cameraThree = null;                                                       // cached THREE camera instance for fast access (avoids re-reading world each time)
+let camControls = null;                                                       // cached camera controls to listen for user-driven camera moves
+
+
+export function initMarkerVisibilityWatcher(world) {                          // Initialize once: listen to camera changes
+  try {
+    cameraThree = /** @type {import('three').Camera} */ (world.camera.three); // grab the underlying THREE camera
+    camControls = world.camera.controls;                                      // controls fire 'change' whenever the user pans/zooms/rotates
+    if (camControls && typeof camControls.addEventListener === 'function') {
+      camControls.addEventListener('change', onCameraChange);                 // subscribe once to keep banner in sync with camera
+      camControls.addEventListener('update', onCameraChange);                 // some controls fire only 'update' events
+    }
+  } catch (_) { /* no-op: avoid breaking the app */ }
+}
+
+
+export function updateActiveMarkerContext(markerWorldPos, markerAttrs) {   // Update when a marker is created/updated
+  activeMarkerWorldPos = markerWorldPos ? markerWorldPos.clone() : null;   // clone to avoid accidental external mutations
+  activeMarkerAttrs = markerAttrs || null;                                 // keep the latest 5 fields to show in the banner
+  recalcAndToggleBanner();                                                 // reflect immediately so UI updates without waiting for movement
+}
+
+export function clearActiveMarkerContext() {                               // Clear when marker is removed (e.g., ESC)
+  activeMarkerWorldPos = null;                                             // no target = nothing to track
+  activeMarkerAttrs = null;                                                // clear cached data so banner won’t show stale info
+  hideOffscreenBanner();                                              // proactively hide the banner
+}
+
+function onCameraChange() {
+  recalcAndToggleBanner();
+}
+
+function recalcAndToggleBanner() {                                            // central place: compute visibility and toggle UI
+  if (!activeMarkerWorldPos || !cameraThree) {                                // nothing to check or no camera available
+    hideOffscreenBanner();                                               // hide to avoid showing an empty banner
+    return;                                                                   // and exit
+  }
+  const visible = isWorldPosInView(activeMarkerWorldPos, cameraThree);        // true if world position projects inside the screen
+  if (!visible && activeMarkerAttrs) {                                        // only show when not visible and we have data to show
+    const html = buildBannerHtml(activeMarkerAttrs);                          // build a small table from the template
+    displayOffscreenBanner(html);                                        // show top-right banner
+  } else {
+    hideOffscreenBanner();                                               // otherwise hide
+  }
+}
+
+
+function isWorldPosInView(worldPos, camera) {
+  const ndc = worldPos.clone().project(camera);                               // project 3D point into Normalized Device Coordinates (-1..1)
+  return (
+    ndc.x >= -1 && ndc.x <= 1 &&                                              // inside horizontal screen bounds
+    ndc.y >= -1 && ndc.y <= 1 &&                                              // inside vertical screen bounds
+    ndc.z >= -1 && ndc.z <= 1                                                 // inside depth range (in front of camera)
+  );
+}
+
+
+function buildBannerHtml(attrs) {                                              // Clone template and fill text values for the banner
+  const tpl = /** @type {HTMLTemplateElement|null} */ (document.getElementById('marker-banner-template')); // find the template in index.html
+  if (tpl && tpl.content && tpl.content.firstElementChild) {                   // ensure template exists and has an element inside
+    const element = tpl.content.firstElementChild.cloneNode(true);             // deep-clone the template content (detached DOM)
+    applyMarkerLabelValues(                                                    // fill the 5 cells via textContent (safe, no HTML injection)
+      /** @type {HTMLElement} */(element),
+      attrs.name || '', attrs.objectType || '', attrs.tag || '', attrs.category || '', attrs.localId || ''
+    );
+    return /** @type {HTMLElement} */ (element).outerHTML;                     // return as HTML string for the banner container
+  }
+  return '';                                                                   // If the template is missing, render nothing (avoid errors)
+}
+// @ts-check
+import * as ThatOpenFront from "@thatopen/components-front";                       // front helpers (Marker overlay system)
+import { getSelectionAttributes, createMarkerValues, applyMarkerLabelValues, computeMarkerWorldPosition, updateMarkerInstance } from "./marker-helpers.js";
+import { updateActiveMarkerContext, clearActiveMarkerContext } from "./marker-visibility.js";
+
+let markerServInst;                 // holds the screen-space marker service (creates/updates/deletes markers)
+let markerLabelElemTemp;            // cloned HTML element used as the marker label (DOM template instance)
+let activeMarkerInstId;             // id/handle of the currently shown marker (for deletion/replacement)
+
+export function setMarker(engineComponents) {                                                                                   // prepares HTML overlay (initialization)
+  const markerTemplateElement = document.getElementById("marker-template");                                                     // find the template in index.html
+  markerLabelElemTemp = (/** @type {HTMLTemplateElement} */ (markerTemplateElement)).content.firstElementChild.cloneNode(true); // clone label element (detached DOM node)
+  markerServInst = engineComponents.get(ThatOpenFront.Marker);                                                                  // get Marker service
+}
+
+export async function renderMarkerForSel(engineComponents, world, sel) {                                                        // shows marker and fills metadata
+  const attrs = await getSelectionAttributes(engineComponents, sel);
+  const { markerName, markerObjectType, markerTag, markerCategory, markerLocalId } = createMarkerValues(attrs);
+  applyMarkerLabelValues(markerLabelElemTemp, markerName, markerObjectType, markerTag, markerCategory, markerLocalId);
+  const markerWorldPosition = computeMarkerWorldPosition(sel);
+  activeMarkerInstId = updateMarkerInstance(markerServInst, activeMarkerInstId, world, markerLabelElemTemp, markerWorldPosition);
+  updateActiveMarkerContext(markerWorldPosition, {                                                                              // forward world position + attributes to watcher
+    name: markerName,
+    objectType: markerObjectType,
+    tag: markerTag,
+    category: markerCategory,
+    localId: markerLocalId,
+  });
+  return {
+    name: markerName, objectType: markerObjectType, tag: markerTag, category: markerCategory, localId: markerLocalId, // pass marker fields back for chat reference
+  }
+};
+
+export function removeActiveMarker() {                                   // removes marker if one exists (cleanup)
+  if (activeMarkerInstId) {
+    markerServInst.delete(activeMarkerInstId);                           // delete marker by its id/handle
+    activeMarkerInstId = null;                                           // clear the handle
+  }
+  clearActiveMarkerContext();                                            // reset visibility state and hide banner
+}
+
+// @ts-check
+import { FragmentsManager } from "@thatopen/components";
+import * as THREE from "three";
+import { removeActiveMarker } from "./marker.js";
+
+async function buildSelFromRayHit(engineComponents, rayHit) {             // builds selection info from a ray hit
+  const modelId = rayHit.fragments.modelId;                               // read model identifier (model id)
+  const itemId = rayHit.localId;                                          // item identifier (local id)
+  let sel = { modelId, itemId };                                          // minimal selection payload(data package) (fallback(backup/default)) to keep working when fragments API is unavailable, when there is no more data coming
+  try {
+    const fragMan = engineComponents.get(FragmentsManager);               // get fragment manager if available
+    if (fragMan && typeof fragMan.getBBoxes === 'function') {
+      const [bBox] = await fragMan.getBBoxes({ [modelId]: [itemId] });    // fetch bounding box (Box3) to compute framing and marker position
+      const vector3Center = bBox.getCenter(new THREE.Vector3());          // compute center (Vector3)
+      sel = { modelId, itemId, center: vector3Center, box: bBox };        // enriched selection (with box) to enable camera/marker updates
+    }
+  } catch (_) {                                                           // ignore if fragments manager is not present
+
+  }
+  return sel;                                                             // return minimal or enriched selection
+}
+
+export async function handleCanvasClick(event, engineComponents, raycaster, applySelEffects) {
+  raycaster.mouse.updateMouseInfo(event);                                 // lines up the laser with the mouse point
+  const rayHit = await raycaster.castRay();                               // cast a ray and wait for a hit
+
+  if (rayHit) {
+    const sel = await buildSelFromRayHit(engineComponents, rayHit);       // build selection data from the hit to include ids and bBox
+    applySelEffects(sel);                                                 // hand selection to caller for effects (callback)
+    return;
+  }
+}
+
+export function handleEscapeKey(e, engineComponents) {
+  if (e.key === 'Escape') {
+    const fragMan = engineComponents.get(FragmentsManager);
+    fragMan.resetHighlight();                                             // clear current highlight
+    fragMan.core?.update(true);
+    removeActiveMarker();
+  }
+}
+
+// @ts-check
+import { FragmentsManager, Raycasters } from "@thatopen/components";
+import * as FRAGS from "@thatopen/fragments";
+import * as THREE from "three";
+import { handleCanvasClick, handleEscapeKey } from "./raycaster-helpers.js";
+
+
+const cssPrimaryColor = (typeof document !== "undefined" && typeof getComputedStyle === "function")
+  ? getComputedStyle(document.documentElement).getPropertyValue("--primary").trim()
+  : "#FF0000";
+
+
+export const SELECTION_HIGHLIGHT_STYLE = {
+  color: new THREE.Color(cssPrimaryColor || "#FF0000"),
+  renderedFaces: FRAGS.RenderedFaces.ONE,                     // ???: render only front faces (Doku empfohlen)
+  opacity: 0.6,
+  transparent: true,
+};
+
+export function setRaycastEvents(engineComponents, world, applySelEffects) { // sets up click raycasting and selection handling
+  const raycaster = engineComponents.get(Raycasters).get(world);                  // get raycaster for this spesific world to connect to the mouse
+  const canvas = world.renderer.three.domElement;                                 // canvas we attach events to (canvas element) to receive mouse events
+
+  canvas.addEventListener('click', async event => handleCanvasClick(event, engineComponents, raycaster, applySelEffects)); // WAIT and LISTEN for CLICK in CANVAS :)
+  document.addEventListener('keydown', e => handleEscapeKey(e, engineComponents));                             // ESC clears highlight and active marker
+}
+
+export function applySelHighlight(components, sel) {
+  const withMouseSelected = { [sel.modelId]: [sel.itemId] };
+  const fragMan = components.get(FragmentsManager);
+  fragMan.resetHighlight();                                                 // clear previous highlight
+  fragMan.highlight(SELECTION_HIGHLIGHT_STYLE, withMouseSelected);
+  fragMan.core?.update(true);                                               // force an immediate render update
+}
+
+// @ts-check
+// Minimal browser-side HTTP helper for JSON requests                    // centralizes fetch behavior (headers, JSON, error UI)
+import { displayUserErrorSnackbar } from '../ui/error-notify.js';        // shows a small snackbar on request errors (UI feedback)
+
+async function readTextSafely(res) {                                     // safely read text from a Response without throwing
+  try { return await res.text(); } catch { return ''; }                  // fallback to empty string if body cannot be read
+}
+
+async function parseJson(res, onErrorPrefix = 'Fehler bei Anfrage') {    // parse JSON and surface HTTP errors consistently
+  if (!res.ok) {                                                         // non-2xx -> treat as error
+    const text = await readTextSafely(res);                              // try to get error text from server
+    const msg = text || `${onErrorPrefix}: HTTP ${res.status}`;          // build readable message (fallback to status)
+    displayUserErrorSnackbar(msg);                                       // inform user in-app (snackbar)
+    throw new Error(msg);                                                // propagate to caller for additional handling
+  }
+  return res.json();                                                     // success path: decode JSON payload
+}
+
+/**
+ * @param {string} url
+ * @param {{ headers?: Record<string, string>, signal?: AbortSignal }} [options]
+ */
+export async function getReqWithJson(url, { headers = {}, signal } = {}) {  // perform a GET request expecting a JSON response
+  const res = await fetch(url, { method: 'GET', headers, signal });         // fire GET with optional headers/AbortSignal
+  return parseJson(res, 'GET fehlgeschlagen');                              // parse or show snackbar on error
+}
+
+/**
+ * @param {string} url
+ * @param {any} body
+ * @param {{ headers?: Record<string, string>, signal?: AbortSignal }} [options]
+ */
+export async function postReqWithJson(url, body, { headers = {}, signal } = {}) { // perform a POST request with JSON body
+  const res = await fetch(url, {                                 // send request using Fetch API (browser)
+    method: 'POST',                                              // HTTP verb
+    headers: { 'Content-Type': 'application/json', ...headers }, // ensure JSON content type, allow extra headers
+    body: JSON.stringify(body),                                  // serialize JS object to JSON string
+    signal,                                                      // optional AbortSignal for cancellation
+  });
+  return parseJson(res, 'POST fehlgeschlagen');                  // parse or show snackbar on error
+}
+declare global {
+  interface Window {
+    applyChatSelHighlight: (sel: { modelId: string; itemId: number }) => void;
+  }
+}
+
+export {};
+// @ts-check
+// Simple in-app error notifier (tiny snackbar) the one button that actually shows a red error box on screen
+let ErrorSnackElem = null;     // holds the DOM element for the snackbar (created once)
+let ErrorSnackTimer = null;    // timeout id used to hide the snackbar after a delay
+
+// Shows a short, visible error message to the user via snackbar
+export function displayUserErrorSnackbar(messageText = 'Ein Fehler ist aufgetreten', durationMs = 10000) {
+  try {
+    if (!ErrorSnackElem) {
+      ErrorSnackElem = document.createElement('div');         // create snackbar host element
+      ErrorSnackElem.id = 'app-error-snackbar';               // fixed id (styled in global CSS)
+      ErrorSnackElem.setAttribute('role', 'alert');           // accessibility role for screen readers
+      document.body.appendChild(ErrorSnackElem);              // attach to document body once
+    }
+    ErrorSnackElem.textContent = String(messageText || '');   // set current error text (string)
+    ErrorSnackElem.classList.add('visible');                  // make it visible (CSS transition)
+    if (ErrorSnackTimer) clearTimeout(ErrorSnackTimer);       // clear any previous hide timer
+    ErrorSnackTimer = setTimeout(() => {                      // schedule hide
+      if (ErrorSnackElem) ErrorSnackElem.classList.remove('visible');
+    }, durationMs);
+  } catch (_) { /* no-op: never throw from notifier */ }
+}
+// @ts-check
+let OffscreenBannerElem = null;                                     // holds DOM element created once for the banner
+
+function ensureOffscreenBannerElemExist() {                               // Ensures banner element exists and returns it
+  if (!OffscreenBannerElem) {
+    OffscreenBannerElem = document.createElement('div');            // create host element
+    OffscreenBannerElem.id = 'app-marker-banner';                   // fixed id
+    OffscreenBannerElem.setAttribute('role', 'status');             // accessibility role (non-interactive status)
+    document.body.appendChild(OffscreenBannerElem);                 // attach once to body
+  }
+  return OffscreenBannerElem;
+}
+
+// Shows marker metadata HTML in the banner (no auto-hide)
+export function displayOffscreenBanner(htmlContent) {
+  try {
+    const el = ensureOffscreenBannerElemExist();                          // create or reuse the banner
+    el.innerHTML = String(htmlContent || '');                    // set HTML content (table markup)
+    el.classList.add('visible');                                 // make visible (transition)
+  } catch (_) { /* never throw from UI helper */ }               // non-critical UI
+}
+
+// Hides the banner (used when marker comes back in view or is cleared)
+export function hideOffscreenBanner() {
+  try {
+    if (!OffscreenBannerElem) return;                               // nothing to hide
+    OffscreenBannerElem.classList.remove('visible');                // hide via CSS class
+  } catch (_) { /* do-nothing */ }
+}
+
+// @ts-check
+import { loadModelAutoDetect } from "./core/utils.js";              // load IFC or FRAG on startup
+import { createViewerEngine } from "./core/viewer.js";
+import { setComposerReference } from "./modules/chat/chat.js";
+import { renderMarkerForSel, setMarker } from "./modules/target/marker.js";
+import { initMarkerVisibilityWatcher } from "./modules/target/marker-visibility.js";
+import { applySelHighlight, setRaycastEvents } from "./modules/target/raycaster.js";
+import { displayUserErrorSnackbar } from "./ui/error-notify.js";
+
+const viewerContainer = document.getElementById("three-canvas");
+
+
+async function init() { // wrap startup in async init to avoid top-level await parse issues
+
+  const { engineComponents, world, fragments } = await createViewerEngine(viewerContainer);// creates viewer engine and scene
+
+  window.applyChatSelHighlight = sel => applySelHighlight(engineComponents, sel);          // re-applies highlight in 3D scene - chat clicks in 3D
+
+  async function fitCameraToSelBox(world, sel) {                // focuses camera on the selected area
+    const camControls = world.camera.controls;                  // use camera controls once
+    if (sel.box) {                                              // if bounding box exists, frame it (Box3)
+      await camControls.fitToBox(sel.box, true);                // center and zoom to the box
+      return;
+    }
+  }
+
+  // handles a resolved selection: highlight, chat, marker, camera
+  async function applySelEffects(sel) {
+    applySelHighlight(engineComponents, sel);
+    const markerAttributes = await renderMarkerForSel(engineComponents, world, sel); // reuse marker data
+    const localIdLabel = (markerAttributes && markerAttributes.localId) ? markerAttributes.localId : sel.itemId;
+    setComposerReference({
+      label: `Local ID ${localIdLabel}`,
+      modelId: sel.modelId, 
+      itemId: sel.itemId,
+      attributes: markerAttributes || null,       // ???: forward marker fields for chat
+    });
+    // await fitCameraToSelBox(world, selection); // focus camera on selection for commented for later uses
+  }
+
+  setRaycastEvents(engineComponents, world, applySelEffects);
+
+  // loads IFC or FRAG and prepares marker overlay (initialization)
+  // await loadModelAutoDetect(engineComponents, fragments, "/model/custom_psets.ifc");
+  await loadModelAutoDetect(engineComponents, fragments, "/fragments/school_str.frag");
+
+  setMarker(engineComponents);
+  initMarkerVisibilityWatcher(world); // start camera listener for banner visibility
+}
+
+// catch startup errors and show to user
+init().catch(err => {
+  const msg = (err && err.message) ? err.message : String(err || 'Fehler');
+  displayUserErrorSnackbar(msg);
+});
+
+// global wiring for runtime errors
+window.addEventListener('error', (e) => {
+  if (!e) return;
+  const m = (e.error && e.error.message) || e.message || 'Fehler';
+  displayUserErrorSnackbar(m);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  if (!e) return;
+  const r = e.reason;
+  const m = (r && r.message) ? r.message : String(r || 'Fehler');
+  displayUserErrorSnackbar(m);
+});
+
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\main.js =====
+// @ts-check
+import { loadModelAutoDetect } from "./core/utils.js";              // load IFC or FRAG on startup
+import { createViewerEngine } from "./core/viewer.js";
+import { setComposerReference } from "./modules/chat/chat.js";
+import { renderMarkerForSel, setMarker } from "./modules/target/marker.js";
+import { initMarkerVisibilityWatcher } from "./modules/target/marker-visibility.js";
+import { applySelHighlight, setRaycastEvents } from "./modules/target/raycaster.js";
+import { displayUserErrorSnackbar } from "./ui/error-notify.js";
+
+const viewerContainer = document.getElementById("three-canvas");
+
+
+async function init() { // wrap startup in async init to avoid top-level await parse issues
+
+  const { engineComponents, world, fragments } = await createViewerEngine(viewerContainer);// creates viewer engine and scene
+
+  window.applyChatSelHighlight = sel => applySelHighlight(engineComponents, sel);          // re-applies highlight in 3D scene - chat clicks in 3D
+
+  async function fitCameraToSelBox(world, sel) {                // focuses camera on the selected area
+    const camControls = world.camera.controls;                  // use camera controls once
+    if (sel.box) {                                              // if bounding box exists, frame it (Box3)
+      await camControls.fitToBox(sel.box, true);                // center and zoom to the box
+      return;
+    }
+  }
+
+  // handles a resolved selection: highlight, chat, marker, camera
+  async function applySelEffects(sel) {
+    applySelHighlight(engineComponents, sel);
+    const markerAttributes = await renderMarkerForSel(engineComponents, world, sel); // reuse marker data
+    const localIdLabel = (markerAttributes && markerAttributes.localId) ? markerAttributes.localId : sel.itemId;
+    setComposerReference({
+      label: `Local ID ${localIdLabel}`,
+      modelId: sel.modelId, 
+      itemId: sel.itemId,
+      attributes: markerAttributes || null,       // ???: forward marker fields for chat
+    });
+    // await fitCameraToSelBox(world, selection); // focus camera on selection for commented for later uses
+  }
+
+  setRaycastEvents(engineComponents, world, applySelEffects);
+
+  // loads IFC or FRAG and prepares marker overlay (initialization)
+  // await loadModelAutoDetect(engineComponents, fragments, "/model/custom_psets.ifc");
+  await loadModelAutoDetect(engineComponents, fragments, "/fragments/school_str.frag");
+
+  setMarker(engineComponents);
+  initMarkerVisibilityWatcher(world); // start camera listener for banner visibility
+}
+
+// catch startup errors and show to user
+init().catch(err => {
+  const msg = (err && err.message) ? err.message : String(err || 'Fehler');
+  displayUserErrorSnackbar(msg);
+});
+
+// global wiring for runtime errors
+window.addEventListener('error', (e) => {
+  if (!e) return;
+  const m = (e.error && e.error.message) || e.message || 'Fehler';
+  displayUserErrorSnackbar(m);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  if (!e) return;
+  const r = e.reason;
+  const m = (r && r.message) ? r.message : String(r || 'Fehler');
+  displayUserErrorSnackbar(m);
+});
+
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\api\request-assistant-reply-api.js =====
+// @ts-check
+
+//Request an assistant reply for a user message
+//Input: object with userMessageText (string), previousChatHistory (array, optional), selectedModelReference (any, optional)
+//Output: Promise that resolves to assistant reply text (string)
+
+export async function requestAssistantReplyForUserMessage({ userMessageText, previousChatHistory = [], selectedModelReference = null }) {
+  // use shared client helper for JSON POST (standard headers, error handling, snackbar)
+  const { postReqWithJson: postJson } = await import('../services/http-client.js'); // import only and when we need it
+  const data = await postJson('/api/assistant-reply', {                 // Send request to our API endpoint (dev proxy (or prod function)); insdie: fetch('/api/assistant-reply', { method: 'POST', … })
+    message: userMessageText,                                           // The actual text the user typed
+    history: previousChatHistory,                                       // short history of the chat
+    reference: selectedModelReference                                   // 3D selection reference to a selected model item
+  });
+  return data?.reply || '';                                             // Return assistant reply text or empty string if missing to keep UI stable when reply is absent
+}
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\core\utils.js =====
+// @ts-check
+async function fetchOrThrow(resource, errorPrefix) {                                // fetches a resource and throws on HTTP error
+  const res = await fetch(resource);
+  if (!res.ok) {
+    throw new Error(`${errorPrefix} ${resource}: ${res.status} ${res.statusText}`); // include status code and text
+  }
+  return res;
+}
+
+export async function createWorkerObjectUrl(url) {
+  try {
+    const workerResponse = await fetchOrThrow(url, 'Failed to fetch worker at');
+    const workerBlob = await workerResponse.blob();
+    const workerFile = new File([workerBlob], "worker.mjs", { type: "text/javascript" });
+    return URL.createObjectURL(workerFile);
+  } catch (error) {
+    displayUserErrorSnackbar(`Worker konnte nicht geladen werden: ${url}`);                   // show a short snackbar in UI
+    throw new Error(`Error loading worker from ${url}: ${error.message}`);
+  }
+}
+
+export async function loadFragmentsFromPath(fragments, path = "/fragments/school_str.fragxxx") { // /fragments/school_str.frag
+  try {
+    const file = await fetchOrThrow(path, 'Failed to fetch fragments at');
+    const buffer = await file.arrayBuffer();
+    const normalizedPath = path.replace(/\\/g, '/');        // normalize slashes for consistent model ids
+    const trimmedPath = normalizedPath.replace(/^\/+/, ''); // drop leading slashes to align with repo structure
+    let modelId = trimmedPath || 'model';                   // derive a stable identifier from the fragment path
+    const fileTail = modelId.split('/').pop() || modelId;   // collapse to last path segment for nicer ids
+    modelId = fileTail.replace(/\.frag$/i, '') || fileTail; // drop .frag suffix to keep clean name
+    await fragments.core.load(buffer, { modelId });         // register model with derived identifier so selections report current file,  parses data internally to real objects
+  } catch (error) {
+    console.error(`Error loading fragments from ${path}:`, error);
+    displayUserErrorSnackbar(`Model konnte nicht geladen werden: ${path}`); // show a short snackbar in UI
+  }
+}
+
+export async function loadIfcFromPath(components, path = "/model/custom_psets.ifc") { // default IFC -> FRAG (online wasm)
+  try {
+    const file = await fetchOrThrow(path, 'Failed to fetch IFC at');
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);                           // convert to bytes for IfcLoader
+    const ifcLoader = components.get(IfcLoader);                    // get IFC loader from engine
+    await ifcLoader.setup({                                         // pin wasm CDN to avoid autoSetWasm fetch
+      autoSetWasm: false,
+      wasm: { path: "https://unpkg.com/web-ifc@0.0.70/", absolute: true },
+    });
+    const normalizedPath = path.replace(/\\/g, '/');                // normalize slashes for model id
+    const trimmedPath = normalizedPath.replace(/^\/+/, '');         // drop leading slashes
+    let modelId = trimmedPath || 'model';                           // stable id from path
+    const fileTail = modelId.split('/').pop() || modelId;           // last segment
+    modelId = fileTail.replace(/\.ifc$/i, '') || fileTail;          // drop .ifc extension
+    await ifcLoader.load(bytes, true, modelId);                     // convert IFC -> FRAG and load
+  } catch (error) {
+    console.error(`Error loading IFC from ${path}:`, error);
+    displayUserErrorSnackbar(`IFC konnte nicht geladen werden: ${path}`);
+  }
+}
+
+export async function loadModelAutoDetect(components, fragments, path) {            // choose IFC or FRAG by extension
+  const safePath = String(path || '').trim();
+  if (!safePath || safePath.toLowerCase().endsWith('.frag')) {
+    return loadFragmentsFromPath(fragments, safePath || undefined);
+  }
+  if (safePath.toLowerCase().endsWith('.ifc')) {
+    return loadIfcFromPath(components, safePath);
+  }
+  displayUserErrorSnackbar(`Unbekannter Dateityp: ${safePath || path}`);
+}
+
+export function escapeHTML(str) {        // replaces special characters with HTML-safe entities (escaping)
+  const s = String(str ?? 'undefined!'); // avoid undefined/null issues
+  return s.replace(/[&<>"']/g, m => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  }[m]));
+}
+import { IfcLoader } from "@thatopen/components";
+import { displayUserErrorSnackbar } from "../ui/error-notify.js";
+
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\core\viewer.js =====
+// @ts-check
+import * as TOC from "@thatopen/components"; // core engine classes (components)
+import * as TOF from "@thatopen/components-front";
+import { createWorkerObjectUrl } from "./utils.js";
+
+// sets up the 3D viewer and engine (initialization)
+export async function createViewerEngine(viewerContainer) {
+  const engineComponents = new TOC.Components();                                     // central service registry for the engine
+
+                                                                               
+  const worlds = engineComponents.get(TOC.Worlds);                                   // create world and scene
+  const world = worlds.create();
+  const simpleScene = /** @type {import('@thatopen/components').SimpleScene} */ (new TOC.SimpleScene(engineComponents));
+  world.scene = simpleScene;
+  simpleScene.setup();
+  (/** @type {import('three').Scene} */(world.scene.three)).background = null;       // transparent background (no color)
+
+                                                                               
+  world.renderer = new TOF.PostproductionRenderer(engineComponents, viewerContainer);// renderer and camera setup
+  world.camera = new TOC.OrthoPerspectiveCamera(engineComponents);
+  await world.camera.controls.setLookAt(78, 20, -2.2, 26, -4, 25);                   // set initial view position and target
+
+                                                                               
+  engineComponents.init();                                                           // initialize components and helpers (engine init)
+  engineComponents.get(TOC.Grids).create(world);                                     // show grid helper in the scene
+
+  // prepare fragments manager and worker
+  const fragments = engineComponents.get(TOC.FragmentsManager);
+  const fragmentWorkerUrl = "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
+  const workerObjectUrl = await createWorkerObjectUrl(fragmentWorkerUrl);            // hosted worker URL to parse fragments off the main thread
+  fragments.init(workerObjectUrl);                                                   // boot fragments with the worker (init)
+
+  // keep fragments up-to-date with camera/scene changes
+  (/** @type {{ addEventListener(type: 'change' | 'update', listener: (e: unknown) => void): void }} */ (world.camera.controls)).addEventListener("change", () => fragments.core.update(true)); // recompute on camera move
+  fragments.list.onItemSet.add(({ value: model }) => {  // when a fragment model loads, attach it
+    model.useCamera(/** @type {import('three').PerspectiveCamera | import('three').OrthographicCamera} */(world.camera.three)); // link model shaders to camera (camera binding) to ensure correct uniforms
+    world.scene.three.add(model.object);                // add model to scene graph to render it
+    fragments.core.update(true);                        // force a render update
+  });
+
+  // render loop
+  let isRendering = true;
+  if (world.renderer.three?.setAnimationLoop) {
+    world.renderer.three.setAnimationLoop(() => {        // use rAF-based loop when available via requestAnimationFrame
+      if (isRendering) world.renderer.update();
+    });
+  }
+  document.addEventListener("visibilitychange", () => {  // pause/resume on tab visibility changes to save resources when hidden
+    isRendering = !document.hidden;
+  });
+
+  return { engineComponents, world, fragments };
+}
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\modules\chat\chat-helpers.js =====
+// @ts-check
+import { appendMessageToChat } from "./components/chat-ui.js";
+import { requestAssistantReplyForUserMessage } from "../../api/request-assistant-reply-api.js";
+import { displayUserErrorSnackbar } from "../../ui/error-notify.js";
+
+const STORAGE_KEY = 'chat-history';
+
+export const messageHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+export function pushHistoryUserMessage(userMessage) {
+  messageHistory.push(userMessage);
+  const historyIndex = messageHistory.length - 1;                   // capture index of the newly stored message
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Push (Persist) to local storage to restore chat after reload
+  appendMessageToChat(userMessage, { historyIndex });                // Render user message with delete target index
+}
+
+export function removeHistoryMessageByIndex(historyIndex) {
+  const isIndexValid = Number.isInteger(historyIndex) && historyIndex >= 0 && historyIndex < messageHistory.length;
+  if (!isIndexValid) return false;                                   // stop when the selected index does not exist
+
+  messageHistory.splice(historyIndex, 1);                            // remove the selected message only
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // keep storage in sync with the array
+  return true;                                                       // report that one selected message was removed
+}
+
+function pushAssistantMessage(assistantMessage) {
+  messageHistory.push(assistantMessage);                             // Save assistant message to in-memory array
+  const historyIndex = messageHistory.length - 1;                   // capture index to enable per-message deletion
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist updated chat with the AI reply
+  appendMessageToChat(assistantMessage, { historyIndex });           // Show the AI answer in the chat UI
+}
+
+function pushErrorMessage(errMsg) {
+  messageHistory.push(errMsg);                                       // Store the error message in history (state)
+  const historyIndex = messageHistory.length - 1;                   // capture index to enable per-message deletion
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist the error in localStorage (persistence)
+  appendMessageToChat(errMsg, { historyIndex });                     // Show the error in the chat so the user knows (feedback)
+}
+
+/**
+ * @param {string} text
+ * @param {{ time?: number; reference: any; text?: string; sender?: string; }} userMessage
+ */
+export async function handleAssistantResponse(text, userMessage) {
+  try {                                                                    // Network or server errors (error handling)
+    const assistantReplyText = await requestAssistantReplyForUserMessage({ // Ask server for AI reply
+      userMessageText: text,                                               // The text the user types
+      previousChatHistory: messageHistory,                                 // Pass current chat history
+      selectedModelReference: userMessage.reference                        // Optional 3D selection pass the user message reference
+    });
+    const assistantMessage = { time: Date.now(), reference: null, text: assistantReplyText || '...', sender: 'assistant' }; // Build assistant message, mark as assistant/system side
+    pushAssistantMessage(assistantMessage);
+  } catch (err) {                                                          // Show a readable error message
+    const errMsg = { time: Date.now(), reference: null, text: `Fehler: ${(err && err.message) || 'Unbekannt'}`, sender: 'system' }; // Create an error message to display, mark as system
+    pushErrorMessage(errMsg);
+    displayUserErrorSnackbar(errMsg.text);
+  }
+}
+
+
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\modules\chat\chat.js =====
+// @ts-check
+import { aiToggle, appendMessageToChat, chatMessages, clearReferenceBtn, inputField, inputForm, referenceContainer, referenceLabel } from "./components/chat-ui.js";
+import { handleAssistantResponse, messageHistory, pushHistoryUserMessage, removeHistoryMessageByIndex } from "./chat-helpers.js";
+
+let currentReference = null;                            // current selection reference and history
+
+// API
+export function setComposerReference(referenceObject) { // sets the current 3D selection as a chat reference to link a message to a picked item
+  currentReference = referenceObject;
+  referenceLabel.textContent = referenceObject.label;
+  referenceContainer.classList.remove('hidden');
+}
+
+export function clearComposerReference() {              // clears the current chat reference
+  currentReference = null;
+  referenceLabel.textContent = '';
+  referenceContainer.classList.add('hidden');
+}
+
+clearReferenceBtn.addEventListener('click', clearComposerReference);// event listeners for reference chip and input
+
+inputField.addEventListener('keydown', e => {           // send on Enter
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();                                 // stop the browser from perfomign a full-page reload
+    inputForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  }
+});
+
+function renderMessageHistory() {                       // keeps DOM list in sync with messageHistory order
+  chatMessages.innerHTML = '';
+  messageHistory.forEach((message, historyIndex) => {   // pass current index for per-message delete buttons
+    appendMessageToChat(message, { historyIndex });
+  });
+}
+
+chatMessages.addEventListener('chat-message-delete', e => {            // receives delete requests from the bubble button
+  const customEvent = /** @type {CustomEvent<{ historyIndex?: number }>} */ (e); // read custom payload safely in JS + @ts-check
+  const historyIndex = Number.isInteger(customEvent.detail?.historyIndex) ? customEvent.detail.historyIndex : null;
+  if (!removeHistoryMessageByIndex(historyIndex)) return;              // stop when index is not valid anymore
+  renderMessageHistory();                                               // rebuild so all delete indexes stay correct
+});
+
+// Make the submit handler async so we can await the server reply
+inputForm.addEventListener('submit', async e => {                                              // collect message and append to UI to render the message
+  e.preventDefault();
+  const text = (/** @type {HTMLInputElement} */ (inputField)).value.trim();
+  if (!text) return;                                                                           // return empty if no text (do nothing)
+
+  const userMessage = { time: Date.now(), reference: currentReference, text, sender: 'user' }; // compose message object (payload) to store what we need for explicit user message object
+  pushHistoryUserMessage(userMessage);
+
+  (/** @type {HTMLInputElement} */ (inputField)).value = '';
+  inputField.focus();
+  clearComposerReference();
+
+  if (aiToggle && aiToggle.checked) {                                                          // Call AI only when the toggle is enabled
+    await handleAssistantResponse(text, userMessage);
+  }
+
+});
+
+renderMessageHistory();                                      // render saved chat history with delete buttons
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\modules\chat\components\chat-ui.js =====
+// @ts-check
+import { escapeHTML } from "../../../core/utils.js";
+
+export const chatMessages = document.getElementById('chat-messages');
+export const inputForm = document.getElementById('input-form');
+export const inputField = document.getElementById('input-field');
+export const referenceContainer = document.getElementById('chat-reference-container');
+export const referenceLabel = document.getElementById('chat-reference-label');
+export const clearReferenceBtn = document.getElementById('clear-reference-btn');
+export const aiToggle = /** @type {HTMLInputElement | null} */ (document.getElementById('ai-toggle'));
+
+function createReferenceChip(reference) {                // creates a clickable chip that jumps back to the 3D selection (UI chip)
+  const clickableRefTag = document.createElement('div'); // container element for the chip
+  clickableRefTag.classList.add('message-reference');
+  clickableRefTag.textContent = reference.label;
+  clickableRefTag.dataset.modelId = reference.modelId;   // store modelId to target the correct model
+  clickableRefTag.dataset.itemId = reference.itemId;     // store itemId to target the specific element
+  clickableRefTag.addEventListener('click', () => {      // on click, re-select and highlight in 3D (interaction) to restore the selection from chat
+    if (clickableRefTag.dataset.itemId) {                // avoid missing id (guard) to prevent invalid highlighting
+      window.applyChatSelHighlight({                     // trigger global highlighter
+        modelId: clickableRefTag.dataset.modelId,
+        itemId: +clickableRefTag.dataset.itemId,         // convert to number (type cast) to ensure numeric id
+      });
+    }
+  });
+  return clickableRefTag;
+}
+
+export function appendMessageToChat({ text, time, reference, sender }, { historyIndex = null } = {}) { // renders a message in the chat (DOM update)
+  const msgWrapper = document.createElement('div');       // build wrapper and mark as self (message DOM) to style it as the sender
+  const isSelf = sender ? sender === 'user' : true;       // decide side based on sender (default user/self for backwards-compat)
+  msgWrapper.classList.add('message-wrapper');
+  if (isSelf) msgWrapper.classList.add('self');           // only user messages get the 'self' style (orange, right)
+
+  if (reference && reference.label) {                     // if reference exists, show chip (context link) to associate the message with a selection
+    const ref = createReferenceChip(reference);           // reuse builder to keep DOM consistent
+    msgWrapper.appendChild(ref);                          // place chip above the message (generation a clickable UI element in layout)
+  }
+
+  const chatMsgContainer = document.createElement('div');
+  chatMsgContainer.classList.add('message');
+  chatMsgContainer.innerHTML = escapeHTML(text);          // escape user text before inserting (XSS protection)
+
+  const messageControls = document.createElement('div');                               // top-right controls inside each message bubble
+  messageControls.classList.add('message__controls');
+
+  const selectButton = document.createElement('button');                               // circle selection button
+  selectButton.classList.add('message__select-btn');
+  selectButton.type = 'button';
+  selectButton.setAttribute('aria-label', 'Select message');
+  selectButton.setAttribute('aria-pressed', 'false');
+
+  const deleteButton = document.createElement('button');                               // trash bin delete button
+  deleteButton.classList.add('message__delete-btn');
+  deleteButton.type = 'button';
+  deleteButton.textContent = '🗑️';
+  deleteButton.setAttribute('aria-label', 'Delete message');
+  deleteButton.addEventListener('click', () => {                                       // click asks browser confirmation first
+    const isDeleteConfirmed = window.confirm('Are you sure you want to delete this message?');
+    if (!isDeleteConfirmed || !Number.isInteger(historyIndex)) return;                 // stop when canceled or index is missing
+    chatMessages.dispatchEvent(new CustomEvent('chat-message-delete', {
+      detail: { historyIndex },                                                         // send exact history index to chat.js
+    }));
+  });
+
+  selectButton.addEventListener('click', () => {                                       // toggle selected state for this bubble
+    const isSelected = chatMsgContainer.classList.toggle('message--selected');
+    selectButton.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+  });
+
+  messageControls.appendChild(deleteButton);
+  messageControls.appendChild(selectButton);
+  chatMsgContainer.appendChild(messageControls);
+
+  const chatMeta = document.createElement('div');
+  chatMeta.classList.add('meta');
+  chatMeta.textContent = new Date(time).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  msgWrapper.appendChild(chatMsgContainer);
+  msgWrapper.appendChild(chatMeta);
+  chatMessages.appendChild(msgWrapper);
+  chatMessages.scrollTop = chatMessages.scrollHeight;   // auto-scroll to newest message (auto-scroll)
+}
+
+
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\modules\target\marker-helpers.js =====
+// @ts-check
+import { FragmentsManager as EngineFragmentsManager } from "@thatopen/components";                       // engine service to access fragment data (attributes API)
+
+export async function getSelectionAttributes(engineComponents, sel) {
+  const fragmentsManager = engineComponents.get(EngineFragmentsManager);                                 // access fragment data service
+
+// fetch attributes for the selected item (attributes API -> object of key/value pairs)
+  const attributesByModel = await fragmentsManager.getData({ [sel.modelId]: [sel.itemId] });             // returns { [modelId]: [attrsForItem] }
+  const attrs = attributesByModel[sel.modelId][0];                                                       // take first (only) item attributes
+  return attrs;
+}
+
+export function createMarkerValues(attrs) {
+  const asPlainValue = (v) => (v && typeof v === "object" && "value" in v ? v.value : v);                // unwrap value objects to plain values (some entries are { value: X }) to normalize mixed shapes
+
+// fill overlay fields with attributes
+  const markerName = asPlainValue(attrs.Name) || 'Not mentioned!';                                       // reuse marker data for prompt
+  const markerObjectType = asPlainValue(attrs.ObjectType) || 'Not mentioned!';
+  const markerTag = asPlainValue(attrs.Tag) || 'Not mentioned!';
+  const markerCategory = asPlainValue(attrs._category) || 'Not mentioned!';
+  const markerLocalId = asPlainValue(attrs._localId) || 'Not mentioned!';
+  return { markerName, markerObjectType, markerTag, markerCategory, markerLocalId };
+}
+
+export function applyMarkerLabelValues(markerLabelElemTemp, markerName, markerObjectType, markerTag, markerCategory, markerLocalId) {
+  markerLabelElemTemp.querySelector(".val-name").textContent = markerName;  // chaning values directly into html template node
+  markerLabelElemTemp.querySelector(".val-objecttype").textContent = markerObjectType;
+  markerLabelElemTemp.querySelector(".val-tag").textContent = markerTag;
+  markerLabelElemTemp.querySelector(".val-category").textContent = markerCategory;
+  markerLabelElemTemp.querySelector(".val-localid").textContent = markerLocalId;
+}
+
+export function computeMarkerWorldPosition(sel) {
+  // place marker slightly above the selection (position = Vector3 in world space)
+  const markerWorldPosition = sel.center.clone();                        // clone center (avoid mutating selection.center)
+  markerWorldPosition.y += 6;                                            // offset in meters
+  return markerWorldPosition;
+}
+
+export function updateMarkerInstance(markerServInst, activeMarkerInstId, world, markerLabelElemTemp, markerWorldPosition) {
+  if (activeMarkerInstId) markerServInst.delete(activeMarkerInstId);     // remove previous marker
+  const newActiveMarkerInstId = markerServInst.create(                   // create new screen-space marker
+    world, markerLabelElemTemp, markerWorldPosition, true
+  );
+  return newActiveMarkerInstId;
+}
+
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\modules\target\marker-visibility.js =====
+// @ts-check
+import { displayOffscreenBanner, hideOffscreenBanner } from "../../ui/marker-banner.js";
+import { applyMarkerLabelValues } from "./marker-helpers.js";
+
+let activeMarkerWorldPos = null;                                              // current marker world position to project and test visibility
+let activeMarkerAttrs = null;                                                 // current marker attributes
+let cameraThree = null;                                                       // cached THREE camera instance for fast access (avoids re-reading world each time)
+let camControls = null;                                                       // cached camera controls to listen for user-driven camera moves
+
+
+export function initMarkerVisibilityWatcher(world) {                          // Initialize once: listen to camera changes
+  try {
+    cameraThree = /** @type {import('three').Camera} */ (world.camera.three); // grab the underlying THREE camera
+    camControls = world.camera.controls;                                      // controls fire 'change' whenever the user pans/zooms/rotates
+    if (camControls && typeof camControls.addEventListener === 'function') {
+      camControls.addEventListener('change', onCameraChange);                 // subscribe once to keep banner in sync with camera
+      camControls.addEventListener('update', onCameraChange);                 // some controls fire only 'update' events
+    }
+  } catch (_) { /* no-op: avoid breaking the app */ }
+}
+
+
+export function updateActiveMarkerContext(markerWorldPos, markerAttrs) {   // Update when a marker is created/updated
+  activeMarkerWorldPos = markerWorldPos ? markerWorldPos.clone() : null;   // clone to avoid accidental external mutations
+  activeMarkerAttrs = markerAttrs || null;                                 // keep the latest 5 fields to show in the banner
+  recalcAndToggleBanner();                                                 // reflect immediately so UI updates without waiting for movement
+}
+
+export function clearActiveMarkerContext() {                               // Clear when marker is removed (e.g., ESC)
+  activeMarkerWorldPos = null;                                             // no target = nothing to track
+  activeMarkerAttrs = null;                                                // clear cached data so banner won’t show stale info
+  hideOffscreenBanner();                                              // proactively hide the banner
+}
+
+function onCameraChange() {
+  recalcAndToggleBanner();
+}
+
+function recalcAndToggleBanner() {                                            // central place: compute visibility and toggle UI
+  if (!activeMarkerWorldPos || !cameraThree) {                                // nothing to check or no camera available
+    hideOffscreenBanner();                                               // hide to avoid showing an empty banner
+    return;                                                                   // and exit
+  }
+  const visible = isWorldPosInView(activeMarkerWorldPos, cameraThree);        // true if world position projects inside the screen
+  if (!visible && activeMarkerAttrs) {                                        // only show when not visible and we have data to show
+    const html = buildBannerHtml(activeMarkerAttrs);                          // build a small table from the template
+    displayOffscreenBanner(html);                                        // show top-right banner
+  } else {
+    hideOffscreenBanner();                                               // otherwise hide
+  }
+}
+
+
+function isWorldPosInView(worldPos, camera) {
+  const ndc = worldPos.clone().project(camera);                               // project 3D point into Normalized Device Coordinates (-1..1)
+  return (
+    ndc.x >= -1 && ndc.x <= 1 &&                                              // inside horizontal screen bounds
+    ndc.y >= -1 && ndc.y <= 1 &&                                              // inside vertical screen bounds
+    ndc.z >= -1 && ndc.z <= 1                                                 // inside depth range (in front of camera)
+  );
+}
+
+
+function buildBannerHtml(attrs) {                                              // Clone template and fill text values for the banner
+  const tpl = /** @type {HTMLTemplateElement|null} */ (document.getElementById('marker-banner-template')); // find the template in index.html
+  if (tpl && tpl.content && tpl.content.firstElementChild) {                   // ensure template exists and has an element inside
+    const element = tpl.content.firstElementChild.cloneNode(true);             // deep-clone the template content (detached DOM)
+    applyMarkerLabelValues(                                                    // fill the 5 cells via textContent (safe, no HTML injection)
+      /** @type {HTMLElement} */(element),
+      attrs.name || '', attrs.objectType || '', attrs.tag || '', attrs.category || '', attrs.localId || ''
+    );
+    return /** @type {HTMLElement} */ (element).outerHTML;                     // return as HTML string for the banner container
+  }
+  return '';                                                                   // If the template is missing, render nothing (avoid errors)
+}
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\modules\target\marker.js =====
+// @ts-check
+import * as ThatOpenFront from "@thatopen/components-front";                       // front helpers (Marker overlay system)
+import { getSelectionAttributes, createMarkerValues, applyMarkerLabelValues, computeMarkerWorldPosition, updateMarkerInstance } from "./marker-helpers.js";
+import { updateActiveMarkerContext, clearActiveMarkerContext } from "./marker-visibility.js";
+
+let markerServInst;                 // holds the screen-space marker service (creates/updates/deletes markers)
+let markerLabelElemTemp;            // cloned HTML element used as the marker label (DOM template instance)
+let activeMarkerInstId;             // id/handle of the currently shown marker (for deletion/replacement)
+
+export function setMarker(engineComponents) {                                                                                   // prepares HTML overlay (initialization)
+  const markerTemplateElement = document.getElementById("marker-template");                                                     // find the template in index.html
+  markerLabelElemTemp = (/** @type {HTMLTemplateElement} */ (markerTemplateElement)).content.firstElementChild.cloneNode(true); // clone label element (detached DOM node)
+  markerServInst = engineComponents.get(ThatOpenFront.Marker);                                                                  // get Marker service
+}
+
+export async function renderMarkerForSel(engineComponents, world, sel) {                                                        // shows marker and fills metadata
+  const attrs = await getSelectionAttributes(engineComponents, sel);
+  const { markerName, markerObjectType, markerTag, markerCategory, markerLocalId } = createMarkerValues(attrs);
+  applyMarkerLabelValues(markerLabelElemTemp, markerName, markerObjectType, markerTag, markerCategory, markerLocalId);
+  const markerWorldPosition = computeMarkerWorldPosition(sel);
+  activeMarkerInstId = updateMarkerInstance(markerServInst, activeMarkerInstId, world, markerLabelElemTemp, markerWorldPosition);
+  updateActiveMarkerContext(markerWorldPosition, {                                                                              // forward world position + attributes to watcher
+    name: markerName,
+    objectType: markerObjectType,
+    tag: markerTag,
+    category: markerCategory,
+    localId: markerLocalId,
+  });
+  return {
+    name: markerName, objectType: markerObjectType, tag: markerTag, category: markerCategory, localId: markerLocalId, // pass marker fields back for chat reference
+  }
+};
+
+export function removeActiveMarker() {                                   // removes marker if one exists (cleanup)
+  if (activeMarkerInstId) {
+    markerServInst.delete(activeMarkerInstId);                           // delete marker by its id/handle
+    activeMarkerInstId = null;                                           // clear the handle
+  }
+  clearActiveMarkerContext();                                            // reset visibility state and hide banner
+}
+
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\modules\target\raycaster-helpers.js =====
+// @ts-check
+import { FragmentsManager } from "@thatopen/components";
+import * as THREE from "three";
+import { removeActiveMarker } from "./marker.js";
+
+async function buildSelFromRayHit(engineComponents, rayHit) {             // builds selection info from a ray hit
+  const modelId = rayHit.fragments.modelId;                               // read model identifier (model id)
+  const itemId = rayHit.localId;                                          // item identifier (local id)
+  let sel = { modelId, itemId };                                          // minimal selection payload(data package) (fallback(backup/default)) to keep working when fragments API is unavailable, when there is no more data coming
+  try {
+    const fragMan = engineComponents.get(FragmentsManager);               // get fragment manager if available
+    if (fragMan && typeof fragMan.getBBoxes === 'function') {
+      const [bBox] = await fragMan.getBBoxes({ [modelId]: [itemId] });    // fetch bounding box (Box3) to compute framing and marker position
+      const vector3Center = bBox.getCenter(new THREE.Vector3());          // compute center (Vector3)
+      sel = { modelId, itemId, center: vector3Center, box: bBox };        // enriched selection (with box) to enable camera/marker updates
+    }
+  } catch (_) {                                                           // ignore if fragments manager is not present
+
+  }
+  return sel;                                                             // return minimal or enriched selection
+}
+
+export async function handleCanvasClick(event, engineComponents, raycaster, applySelEffects) {
+  raycaster.mouse.updateMouseInfo(event);                                 // lines up the laser with the mouse point
+  const rayHit = await raycaster.castRay();                               // cast a ray and wait for a hit (Important: internally a lot of things happen which result in paring each hit to exact locaId of the selected element)
+
+  if (rayHit) {
+        const sel = await buildSelFromRayHit(engineComponents, rayHit);       // build selection data from the hit to include ids and bBox
+    applySelEffects(sel);                                                 // hand selection to caller for effects (callback)
+    return;
+  }
+}
+
+export function handleEscapeKey(e, engineComponents) {
+  if (e.key === 'Escape') {
+    const fragMan = engineComponents.get(FragmentsManager);
+    fragMan.resetHighlight();                                             // clear current highlight
+    fragMan.core?.update(true);
+    removeActiveMarker();
+  }
+}
+
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\modules\target\raycaster.js =====
+// @ts-check
+import { FragmentsManager, Raycasters } from "@thatopen/components";
+import * as FRAGS from "@thatopen/fragments";
+import * as THREE from "three";
+import { handleCanvasClick, handleEscapeKey } from "./raycaster-helpers.js";
+
+
+const cssPrimaryColor = (typeof document !== "undefined" && typeof getComputedStyle === "function")
+  ? getComputedStyle(document.documentElement).getPropertyValue("--primary").trim()
+  : "#FF0000";
+
+
+export const SELECTION_HIGHLIGHT_STYLE = {
+  color: new THREE.Color(cssPrimaryColor || "#FF0000"),
+  renderedFaces: FRAGS.RenderedFaces.ONE,                     // ???: render only front faces (Doku empfohlen)
+  opacity: 0.6,
+  transparent: true,
+};
+
+export function setRaycastEvents(engineComponents, world, applySelEffects) { // sets up click raycasting and selection handling
+  const raycaster = engineComponents.get(Raycasters).get(world);                  // get raycaster for this spesific world to connect to the mouse
+  const canvas = world.renderer.three.domElement;                                 // canvas we attach events to (canvas element) to receive mouse events
+
+  canvas.addEventListener('click', async event => handleCanvasClick(event, engineComponents, raycaster, applySelEffects)); // WAIT and LISTEN for CLICK in CANVAS :)
+  document.addEventListener('keydown', e => handleEscapeKey(e, engineComponents));                             // ESC clears highlight and active marker
+}
+
+export function applySelHighlight(components, sel) {
+  const withMouseSelected = { [sel.modelId]: [sel.itemId] };
+  const fragMan = components.get(FragmentsManager);
+  fragMan.resetHighlight();                                                 // clear previous highlight
+  fragMan.highlight(SELECTION_HIGHLIGHT_STYLE, withMouseSelected);
+  fragMan.core?.update(true);                                               // force an immediate render update
+}
+
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\services\http-client.js =====
+// @ts-check
+// Minimal browser-side HTTP helper for JSON requests                    // centralizes fetch behavior (headers, JSON, error UI)
+import { displayUserErrorSnackbar } from '../ui/error-notify.js';        // shows a small snackbar on request errors (UI feedback)
+
+async function readTextSafely(res) {                                     // safely read text from a Response without throwing
+  try { return await res.text(); } catch { return ''; }                  // fallback to empty string if body cannot be read
+}
+
+async function parseJson(res, onErrorPrefix = 'Fehler bei Anfrage') {    // parse JSON and surface HTTP errors consistently
+  if (!res.ok) {                                                         // non-2xx -> treat as error
+    const text = await readTextSafely(res);                              // try to get error text from server
+    const msg = text || `${onErrorPrefix}: HTTP ${res.status}`;          // build readable message (fallback to status)
+    displayUserErrorSnackbar(msg);                                       // inform user in-app (snackbar)
+    throw new Error(msg);                                                // propagate to caller for additional handling
+  }
+  return res.json();                                                     // success path: decode JSON payload
+}
+
+/**
+ * @param {string} url
+ * @param {{ headers?: Record<string, string>, signal?: AbortSignal }} [options]
+ */
+export async function getReqWithJson(url, { headers = {}, signal } = {}) {  // perform a GET request expecting a JSON response
+  const res = await fetch(url, { method: 'GET', headers, signal });         // fire GET with optional headers/AbortSignal
+  return parseJson(res, 'GET fehlgeschlagen');                              // parse or show snackbar on error
+}
+
+/**
+ * @param {string} url
+ * @param {any} body
+ * @param {{ headers?: Record<string, string>, signal?: AbortSignal }} [options]
+ */
+export async function postReqWithJson(url, body, { headers = {}, signal } = {}) { // perform a POST request with JSON body
+  const res = await fetch(url, {                                 // send request using Fetch API (browser)
+    method: 'POST',                                              // HTTP verb
+    headers: { 'Content-Type': 'application/json', ...headers }, // ensure JSON content type, allow extra headers
+    body: JSON.stringify(body),                                  // serialize JS object to JSON string
+    signal,                                                      // optional AbortSignal for cancellation
+  });
+  return parseJson(res, 'POST fehlgeschlagen');                  // parse or show snackbar on error
+}
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\types\global.d.ts =====
+declare global {
+  interface Window {
+    applyChatSelHighlight: (sel: { modelId: string; itemId: number }) => void;
+  }
+}
+
+export {};
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\ui\error-notify.js =====
+// @ts-check
+// Simple in-app error notifier (tiny snackbar) the one button that actually shows a red error box on screen
+let ErrorSnackElem = null;     // holds the DOM element for the snackbar (created once)
+let ErrorSnackTimer = null;    // timeout id used to hide the snackbar after a delay
+
+// Shows a short, visible error message to the user via snackbar
+export function displayUserErrorSnackbar(messageText = 'Ein Fehler ist aufgetreten', durationMs = 10000) {
+  try {
+    if (!ErrorSnackElem) {
+      ErrorSnackElem = document.createElement('div');         // create snackbar host element
+      ErrorSnackElem.id = 'app-error-snackbar';               // fixed id (styled in global CSS)
+      ErrorSnackElem.setAttribute('role', 'alert');           // accessibility role for screen readers
+      document.body.appendChild(ErrorSnackElem);              // attach to document body once
+    }
+    ErrorSnackElem.textContent = String(messageText || '');   // set current error text (string)
+    ErrorSnackElem.classList.add('visible');                  // make it visible (CSS transition)
+    if (ErrorSnackTimer) clearTimeout(ErrorSnackTimer);       // clear any previous hide timer
+    ErrorSnackTimer = setTimeout(() => {                      // schedule hide
+      if (ErrorSnackElem) ErrorSnackElem.classList.remove('visible');
+    }, durationMs);
+  } catch (_) { /* no-op: never throw from notifier */ }
+}
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\src\ui\marker-banner.js =====
+// @ts-check
+let OffscreenBannerElem = null;                                     // holds DOM element created once for the banner
+
+function ensureOffscreenBannerElemExist() {                               // Ensures banner element exists and returns it
+  if (!OffscreenBannerElem) {
+    OffscreenBannerElem = document.createElement('div');            // create host element
+    OffscreenBannerElem.id = 'app-marker-banner';                   // fixed id
+    OffscreenBannerElem.setAttribute('role', 'status');             // accessibility role (non-interactive status)
+    document.body.appendChild(OffscreenBannerElem);                 // attach once to body
+  }
+  return OffscreenBannerElem;
+}
+
+// Shows marker metadata HTML in the banner (no auto-hide)
+export function displayOffscreenBanner(htmlContent) {
+  try {
+    const el = ensureOffscreenBannerElemExist();                          // create or reuse the banner
+    el.innerHTML = String(htmlContent || '');                    // set HTML content (table markup)
+    el.classList.add('visible');                                 // make visible (transition)
+  } catch (_) { /* never throw from UI helper */ }               // non-critical UI
+}
+
+// Hides the banner (used when marker comes back in view or is cleared)
+export function hideOffscreenBanner() {
+  try {
+    if (!OffscreenBannerElem) return;                               // nothing to hide
+    OffscreenBannerElem.classList.remove('visible');                // hide via CSS class
+  } catch (_) { /* do-nothing */ }
+}
+
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\tests\chat.test.js =====
+// @ts-check
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+let setComposerReference, clearComposerReference;
+
+beforeEach(async () => { // sets up a minimal DOM for tests to simulate browser environment
+                         // element IDs match chat-ui.js (DOM contract) to match query selectors used by the code
+                         // runs before each test to reset state (test lifecycle)
+  const store = {};
+  global.localStorage = {
+    getItem: (key) => (key in store ? store[key] : null), // read value from in-memory store (mock storage)
+    setItem: (key, value) => {                            // write value to in-memory store (mock storage)
+      store[key] = String(value);
+    },
+    removeItem: (key) => {                                // removes a single key from localStorage (delete)
+      delete store[key];
+    },
+    clear: () => {                                        // clears all keys in the mock
+      for (const key in store) delete store[key];
+    },
+    length: 0,
+    key: () => null
+  };
+
+  document.body.innerHTML = `
+    <div id="chat-messages"></div>
+    <form id="input-form"></form>
+    <input id="input-field" />
+    <div id="chat-reference-container" class="hidden"></div>
+    <span id="chat-reference-label"></span>
+    <button id="clear-reference-btn"></button>
+    <input id="ai-toggle" type="checkbox" />
+  `;
+  vi.resetModules();                                                      // reset module cache so each test gets fresh DOM bindings
+  const mod = await import('../src/modules/chat/chat.js');                // dynamically import chat module (dynamic import) to bind to DOM elements created above
+  setComposerReference = mod.setComposerReference;   // get API export
+  clearComposerReference = mod.clearComposerReference;
+});
+
+afterEach(() => {
+  localStorage.clear();
+});
+
+
+describe('chat references', () => {
+  it('sets and clears reference', () => {
+    setComposerReference({ label: 'Item 1', modelId: 'm1', itemId: 1 });   // simulate setting a 3D chat reference (reference)
+    const refText = document.getElementById('chat-reference-label');
+    const container = document.getElementById('chat-reference-container');
+
+    expect(refText.textContent).toBe('Item 1');                            // expects label to show selected item
+    expect(container.classList.contains('hidden')).toBe(false);            // expects chip to be visible
+
+    clearComposerReference();
+
+    expect(refText.textContent).toBe('');
+    expect(container.classList.contains('hidden')).toBe(true);             // expects chip to hide after clearing
+  });
+});
+
+describe('chat delete button removal', () => {
+  it('removes one specific message after browser confirmation', async () => {
+    const inputField = /** @type {HTMLInputElement} */ (document.getElementById('input-field'));
+    const inputForm = document.getElementById('input-form');
+    const chatMessages = document.getElementById('chat-messages');
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true); // browser confirm should allow deletion in this test
+
+    inputField.value = 'First';                                            // prepare the first message to create visible chat entries
+    inputForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    inputField.value = 'Second';                                           // add a second message so only the newest one should be removed
+    inputForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    expect(chatMessages.children).toHaveLength(2);                         // make sure both messages were rendered before the shortcut runs
+
+    const selectButtons = chatMessages.querySelectorAll('.message__select-btn');
+    (/** @type {HTMLButtonElement} */ (selectButtons[0])).click();        // select first message to show its delete button
+
+    const deleteButtons = chatMessages.querySelectorAll('.message__delete-btn');
+    (/** @type {HTMLButtonElement} */ (deleteButtons[0])).click();        // remove the first selected message only
+
+    expect(chatMessages.children).toHaveLength(1);                         // only the last rendered message should be removed
+    expect(localStorage.getItem('chat-history')).not.toContain('First');   // removed message should no longer exist in storage
+    expect(localStorage.getItem('chat-history')).toContain('Second');      // untouched message should still exist in storage
+    expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to delete this message?');
+  });
+});
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\tests\raycaster.test.js =====
+// @ts-check
+import { Raycasters } from '@thatopen/components';
+import { describe, expect, it, vi } from 'vitest';
+import { applySelHighlight, setRaycastEvents } from '../src/modules/target/raycaster.js';
+
+
+vi.mock('@thatopen/components', () => ({                        // mocks the package to avoid real engine classes (module mock) to isolate unit under test
+  FragmentsManager: Symbol('FragmentsManager'),
+  Raycasters: Symbol('Raycasters')
+}));
+
+vi.mock('@thatopen/fragments', () => ({                         // minimal constants used by selection style to satisfy imports without heavy deps
+  RenderedFaces: { ONE: 'ONE' }
+}));
+
+
+describe('raycaster applySelectionHighlight', () => {
+  it('calls reset and highlight with correct items', () => {
+    const resetHighlight = vi.fn();
+    const highlight = vi.fn();                                // create spies to verify calls and args
+    const core = { update: vi.fn() };
+
+    const components = { get: vi.fn(() => ({ resetHighlight, highlight, core })) }; // simulate components service registry
+    const sel = { modelId: 'model1', itemId: 42 };      // example like a raycast selection to drive expected arguments
+
+    applySelHighlight(components, sel);           // call the unit under test (UUT)
+
+    expect(components.get).toHaveBeenCalled();
+    expect(resetHighlight).toHaveBeenCalled();
+    expect(highlight).toHaveBeenCalledWith(expect.any(Object), { model1: [42] });
+    expect(core.update).toHaveBeenCalledWith(true);
+
+  });
+
+});
+
+describe('raycaster setupRaycastEvents', () => {
+  it('invokes handler with ray hit ids on click', async () => {
+    const handleRaycastSelection = vi.fn();
+
+    // fake canvas that collects event handlers to trigger the click handler manually
+    const canvas = {
+      handlers: {}, // Add handlers bucket to store event callbacks
+      addEventListener: vi.fn((event, handler) => { // Fake addEventListener to save the handler instead of real DOM (mock)
+        canvas.handlers[event] = handler; // Store the handler by event name (e.g., 'click')
+      })
+    };
+
+    // world object exposes the canvas via nested properties to mirror production structure
+    const world = { renderer: { three: { domElement: canvas } } };
+
+    // raycast result returned by the mocked raycaster (hit)
+    const rayHit = { fragments: { modelId: 'model1' }, localId: 7 }; // Define a fake rayHit with modelId and localId (test data)
+    const raycaster = {
+      mouse: { updateMouseInfo: vi.fn() },
+      castRay: vi.fn().mockResolvedValue(rayHit)
+    };
+
+    // services to retrieve the raycaster instance to inject our mock into the code path
+    const raycastersService = { get: vi.fn(() => raycaster) };
+    const engineComponents = { get: vi.fn(() => raycastersService) };
+
+    // initialize and then simulate a click event to test the end-to-end selection flow
+    setRaycastEvents(engineComponents, world, handleRaycastSelection);
+    await canvas.handlers.click({});
+
+    // handler should receive the IDs from the raycast result
+    expect(engineComponents.get).toHaveBeenCalledWith(Raycasters);
+    expect(raycaster.mouse.updateMouseInfo).toHaveBeenCalled();
+    expect(handleRaycastSelection).toHaveBeenCalledWith({ modelId: 'model1', itemId: 7 });
+  });
+}); 
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\tests\utils.test.js =====
+// @ts-check
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createWorkerObjectUrl, loadFragmentsFromPath } from '../src/core/utils.js';
+
+// stores original globals to restore later to avoid polluting other tests
+const originalFetch = global.fetch;
+const originalCreateObjectURL = global.URL.createObjectURL;
+
+// restores globals and clears mocks after each test to keep tests isolated
+afterEach(() => {
+  global.fetch = originalFetch;
+  global.URL.createObjectURL = originalCreateObjectURL;
+  vi.restoreAllMocks();
+});
+
+describe('createWorkerObjectUrl', () => {
+  it('returns object URL on successful fetch', async () => {
+    // fake worker file returned by fetch (mock response) to simulate a successful network response
+    const blob = new Blob(['worker']);
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, blob: () => Promise.resolve(blob) });
+    global.fetch = mockFetch;
+    global.URL.createObjectURL = vi.fn(() => 'object-url');
+
+    // execute the function under test (UUT) to capture the result for assertions
+    const result = await createWorkerObjectUrl('worker.js');
+
+    // verify calls and output (assertion) to ensure correct API usage
+    expect(mockFetch).toHaveBeenCalledWith('worker.js');
+    expect(URL.createObjectURL).toHaveBeenCalled();
+    expect(result).toBe('object-url');
+  });
+
+  it('throws error when fetch fails', async () => {
+    // simulate a network error (rejected promise) to cover the error path
+    global.fetch = vi.fn().mockRejectedValue(new Error('network'));
+    await expect(createWorkerObjectUrl('worker.js')).rejects.toThrow(/network/);
+  });
+});
+
+describe('loadFragmentsFromPath', () => {
+  it('loads fragments on successful fetch', async () => {
+    // mock fetch returning an ArrayBuffer (mock response) to simulate binary payload download
+    const buffer = new ArrayBuffer(8);
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, arrayBuffer: () => Promise.resolve(buffer) });
+    const load = vi.fn();
+    const fragments = { core: { load } };
+
+    await loadFragmentsFromPath(fragments, '/path');
+
+    // loader should receive the downloaded buffer to confirm integration between fetch and loader
+    expect(global.fetch).toHaveBeenCalledWith('/path');
+    expect(load).toHaveBeenCalledWith(buffer, { modelId: 'school_str' });
+  });
+
+  it('logs error when fetch fails', async () => {
+    // simulate fetch failure and spy on console.error to assert error handling logic
+    global.fetch = vi.fn().mockRejectedValue(new Error('fail'));
+    const load = vi.fn();
+    const fragments = { core: { load } };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
+    await loadFragmentsFromPath(fragments, '/path');
+
+    expect(errorSpy).toHaveBeenCalled();
+    expect(load).not.toHaveBeenCalled();
+
+    errorSpy.mockRestore();
+  });
+});
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\tools\ifc-to-frag.js =====
+// @ts-check
+// Minimal IFC -> FRAG converter (Node script)
+// How to run (debug ): `node tools/ifc-to-frag.js`
+// Context : IFC = Industry Foundation Classes (BIM format), FRAG = ThatOpen's fragment format (optimized for web rendering).
+
+import fs from 'node:fs';                          // Node standard library for file I/O (read/write bytes)
+import path from 'node:path';                      // standard for path handling (joins, resolves absolute paths)
+import { fileURLToPath } from 'node:url';          // Utility to derive __filename/__dirname in ESM (ECMAScript Modules)
+import { IfcImporter } from '@thatopen/fragments'; // Converter class (library API) that turns IFC bytes -> FRAG bytes
+
+const __filename = fileURLToPath(import.meta.url); // Resolve current file path from file:// URL (where am I?)
+const __dirname = path.dirname(__filename);        // Directory of this script (base for relative paths)
+const projectRootAbsPath = path.resolve(__dirname, '..'); // absolute path to my-threejs-app (project root)
+
+const inputIfcModelPath = path.resolve(projectRootAbsPath, 'public/model/custom_psets.ifc');        // Input IFC model file path
+const outputFragModelPath = path.resolve(projectRootAbsPath, 'public/fragments/custom_psets.frag'); // Output FRAG file path
+const webIfcWasmDirectory = path.resolve(projectRootAbsPath, 'node_modules/web-ifc') + path.sep;    // Absolute directory to web-ifc WASM files
+
+async function convertIfcToFrag() {                                             // Pipeline read -> convert -> write
+  const inputIfcFileBytes = new Uint8Array(fs.readFileSync(inputIfcModelPath)); // Load IFC file into bytes (Uint8Array)
+  const ifcImporter = new IfcImporter();                                        // Create importer (converter instance)
+  ifcImporter.wasm.path = webIfcWasmDirectory;                                  // Configure path to web-ifc WASM runtime files
+  ifcImporter.wasm.absolute = true;                                             // Indicate path is absolute on disk
+  const outputFragFileBytes = await ifcImporter.process({ bytes: inputIfcFileBytes }); // Convert IFC -> FRAG (returns bytes)
+  fs.mkdirSync(path.dirname(outputFragModelPath), { recursive: true });    // Ensure output folder exists
+  fs.writeFileSync(outputFragModelPath, Buffer.from(outputFragFileBytes)); // Write FRAG bytes to file
+  console.log('Wrote FRAG:', outputFragModelPath);                         // Success message with output path
+}
+
+convertIfcToFrag().catch((err) => {                                      // Error handling (fail fast with readable diagnostics)
+  console.error('Conversion failed:', err);                              // Log full error object (stack/message)
+  process.exit(1);                                                       // exit code (conventional CLI failure)
+});
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\tools\vite.chat-proxy-data.js =====
+// @ts-check
+
+/** @param {any} incomingHttpRequest @returns {Promise<any>} */
+export function parseHttpRequestJsonBody(incomingHttpRequest) {                      // reads HTTP request body stream and parses JSON chunks
+  return new Promise((resolveRequestBody, rejectRequestBody) => {                    // accumulate request body characters into a single string
+    let accumulatedRequestBodyText = '';
+    incomingHttpRequest.on('data', chunk => (accumulatedRequestBodyText += chunk));  // append incoming chunk to the buffer
+    incomingHttpRequest.on('end', () => {                                            // once stream ends, parse buffered text or fall back to {}
+      try {
+        resolveRequestBody(accumulatedRequestBodyText ? JSON.parse(accumulatedRequestBodyText) : {});
+      } catch (requestBodyParseError) {
+        rejectRequestBody(requestBodyParseError);
+      }
+    });
+    incomingHttpRequest.on('error', rejectRequestBody);                              // bubble stream errors to callers
+  });
+}
+
+export function buildReferenceSummaryForPrompt(referencePayload) {                   // include selection id plus marker attributes
+  if (!referencePayload || typeof referencePayload !== 'object') return '';
+  const stringifyReferenceValue = value => {
+    if (value === undefined || value === null || value === '') return 'Not mentioned!';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  };
+  const referenceSummarySegments = [];
+  referenceSummarySegments.push(`Model ID: ${stringifyReferenceValue(referencePayload.modelId)}`);
+  referenceSummarySegments.push(`Item ID: ${stringifyReferenceValue(referencePayload.itemId)}`);
+  const referenceAttributesSource = referencePayload.attributes;
+  const referenceAttributes = referenceAttributesSource && typeof referenceAttributesSource === 'object' ? referenceAttributesSource : {};
+  const referenceAttributePairs = [
+    ['Name', referenceAttributes.Name ?? referenceAttributes.name],
+    ['Object Type', referenceAttributes.ObjectType ?? referenceAttributes.objectType],
+    ['Tag', referenceAttributes.Tag ?? referenceAttributes.tag],
+    ['Category', referenceAttributes._category ?? referenceAttributes.category],
+    ['Local ID', referenceAttributes._localId ?? referenceAttributes.localId],
+  ];
+  const referenceSummaryText = 'Eigenschaften: ' + referenceAttributePairs
+    .map(([attributeLabel, attributeValue]) => `${attributeLabel}: ${stringifyReferenceValue(attributeValue)}`)
+    .join(', ');
+  referenceSummarySegments.push(referenceSummaryText);
+  return `
+Referenzdaten:
+${referenceSummarySegments.join(', ')}`;
+}
+
+/**
+ * @param {{ statusCode: number; setHeader(name: string, value: string): void; end(body?: string): void }} outgoingHttpResponse
+ * @param {number} responseStatusCode
+ * @param {any} responseBodyPayload
+ * @returns {void}
+ */
+export function sendHttpJsonResponse(outgoingHttpResponse, responseStatusCode, responseBodyPayload) {  // tiny helper to send JSON responses
+  outgoingHttpResponse.statusCode = responseStatusCode;                                                // set HTTP status code
+  outgoingHttpResponse.setHeader('Content-Type', 'application/json');                                  // JSON content type header
+  outgoingHttpResponse.end(JSON.stringify(responseBodyPayload));                                       // serialize payload and finish response
+}
+
+export function stringifyChatHistoryForPrompt(historyPayload) { // return chat history as JSON text for prompts
+  if (!Array.isArray(historyPayload)) return '[]';              // when payload missing or invalid -> empty history
+  try {
+    return JSON.stringify(historyPayload);                      // serialize list to JSON string (stable formatting)
+  } catch {
+    return '[]';                                                // fallback to empty history on stringify failure
+  }
+}
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\tools\vite.chat-proxy-helpers.js =====
+import { buildReferenceSummaryForPrompt, stringifyChatHistoryForPrompt } from './vite.chat-proxy-data.js';
+
+export function shouldHandleAssistantReplyRequest(httpRequest) {
+  return httpRequest.method === 'POST' && httpRequest.url?.startsWith('/api/assistant-reply');
+}
+
+export function buildPromptData(requestBody) {
+  /** @type {string} */
+  const userMessageText = (requestBody?.message ?? '').toString().trim();               // normalize message text (string) from client, Pulls the "message" text from the body. If it's missing, use an empty string. Make sure it's a string, then remove extra spaces from start/end.
+  const referencePromptSuffix = buildReferenceSummaryForPrompt(requestBody?.reference); // include selected model reference details
+  
+  const contextIntro = referencePromptSuffix
+    ? 'Referenzinfo: Dieses Element stammt aus einem Architekturmodell und wurde von mir ausgewaehlt. Nutze meine Daten und beantworte dazu passend.'
+    : 'Referenzinfo: Wir sprechen ueber ein Architekturmodell';                         // give the assistant concise scene context
+  const historyJson = stringifyChatHistoryForPrompt(requestBody?.history);              // stringify full chat history so the prompt includes prior questions and answers for context
+  
+  const promptText = 'Prompt: ' + contextIntro + referencePromptSuffix + '\nChatverlauf: ' + historyJson + '\nAntworte kurz dazu.\nText: ' + userMessageText; // extend prompt with reference data
+  
+  return { userMessageText, promptText };
+}
+
+export function getGoogleModels() {
+  return (process.env.GOOGLE_MODELS
+    || 'gemini-2.5-flash,gemini-2.5-pro,gemini-flash-latest,gemini-pro-latest')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+export async function fetchAssistantReplyText(googleModels, promptText, openAiApiKey) {
+  let assistantReplyText = '';                                        // collect reply on first success
+  for (const model of googleModels) {                                 // try each model until one succeeds
+    const openAiHttpResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'
+      + encodeURIComponent(model)
+      + ':generateContent?key='
+      + encodeURIComponent(openAiApiKey), {                           // call OpenAI upstream (Chat Completions), This is the "real" AI server.
+      method: 'POST',                                                 // HTTP POST to send a JSON body
+      headers: {
+        'Content-Type': 'application/json',                           //  says "I'm sending JSON"
+      },
+
+      body: JSON.stringify({                                          // minimal request model and prompt
+        contents: [                                                   // conversation messages
+          { role: 'user', parts: [{ text: promptText }] },            // system instruction
+        ],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 600 }, // cap output length 
+      }),
+    });
+
+    if (openAiHttpResponse.ok) {
+      const openAiResponseJson = await openAiHttpResponse.json();     // parse/read upstream/response JSON
+      assistantReplyText = openAiResponseJson?.candidates?.[0]?.content?.parts?.[0]?.text?.toString?.().trim?.() || ''; // extract assistant reply text (empty string for safe fallback)
+      break; // success
+    }
+
+    // Log upstream error details to help diagnose model/key issues
+    console.log('Upstream status', openAiHttpResponse.status);
+    console.log('Upstream body', await openAiHttpResponse.text());
+
+    if (![429, 403, 503].includes(openAiHttpResponse.status)) break;  // non-quota error -> stop
+  }
+
+  return assistantReplyText;
+}
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\tools\vite.chat-proxy.js =====
+// @ts-check
+// Simple dev proxy "middle person" (hides key and forwards message to the real AI server and brings the answer back) and provides /api/assistant-reply during npm run dev (local only)
+// Node.js runtime: This code runs inside Vite's dev server process (this computer), not in the page
+
+import { parseHttpRequestJsonBody, sendHttpJsonResponse } from './vite.chat-proxy-data.js';
+import { shouldHandleAssistantReplyRequest, buildPromptData, getGoogleModels, fetchAssistantReplyText } from './vite.chat-proxy-helpers.js';
+
+/** @returns {{ name: string, configureServer(devServer: { middlewares: { use: (handler: (req: any, res: any, next: Function) => void) => void } }): void }} */
+export default function createChatProxyPlugin() {                                                                           // creates the chat proxy Vite plugin, Vite reads this and adds plugin to the dev server
+  // "Plugin" here means "extra behavior" added to the dev server
+  return {
+    name: 'chat-proxy',                                                                                                     // plugin name (for Vite debug output)
+
+    /** @param {{ middlewares: { use: (handler: (req: any, res: any, next: Function) => void) => void } }} devServer */
+    configureServer(devServer) {                                                                                            // hook into Vite dev server (middleware registration), Vite calls this when it starts the dev server.
+
+      devServer.middlewares.use(async (httpRequest, httpResponse, nextMiddleware) => {                                      // add an express-style middleware to intercept requests (registration function), dev server is Vite's server instance
+        if (!shouldHandleAssistantReplyRequest(httpRequest)) return nextMiddleware();                                       // only handle POST /api/assistant-reply, pass through others
+        try {
+          const requestBody = await parseHttpRequestJsonBody(httpRequest);                                                  // parse JSON request body from stream, If the browser sent { "message": "Hello" }, then requestBody.message is "Hello"
+          const { userMessageText, promptText } = buildPromptData(requestBody);
+          console.log('[Gemini prompt]', promptText);                                                              // debug prompt preview
+          if (!userMessageText) return sendHttpJsonResponse(httpResponse, 400, { error: 'Missing message' });      // reject when client sends empty input
+          const openAiApiKey = process.env.GOOGLE_API_KEY;                                                         // read local dev API key from environment (never exposed to browser), Looks for your OpenAI API key in your dev machine's environment variables
+          if (!openAiApiKey) return sendHttpJsonResponse(httpResponse, 500, { error: 'GOOGLE_API_KEY missing' });  // fail fast if key is not set locally
+          const googleModels = getGoogleModels();                                                                  // model fallback list
+          const assistantReplyText = await fetchAssistantReplyText(googleModels, promptText, openAiApiKey);
+          if (!assistantReplyText) return sendHttpJsonResponse(httpResponse, 502, { error: 'Upstream error' });    // propagate upstream failure (bad gateway) if all models failed
+          return sendHttpJsonResponse(httpResponse, 200, { reply: assistantReplyText });                           // respond to client with reply payload
+        } catch {                                                                                                  // shield internal errors in dev proxy
+          return sendHttpJsonResponse(httpResponse, 500, { error: 'Server error' });                               // generic error to the client
+        }
+      });
+    },
+  };
+}
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\style.css =====
+/* ---------- Global Box-Sizing ---------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box; /* Breite/Hohe inkl. Padding & Border */ 
+}
+
+/* ---------- Design-Variables ---------- */
+:root {
+  /* Layout */
+  --chat-width: 320px;
+
+  /* Farben */
+  --bg: #141414;
+  --chat-bg: #1e1e1e;
+  --chat-header-bg: #262626;
+  --chat-input-bg: #262626;
+  --text: #e6e6e6;
+  --primary: #FF8200;
+  --primary-contrast: #ffffff;
+  --bubble-bg: #2c2c2c;
+  --scroll-thumb: #444444;
+
+  /* Zusatzliche Farben fur Elemente */
+  --meta-text: #9d9d9d;
+  --ref-bg: #643a00;
+  --ref-text: #cccccc;
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --surface-overlay: rgba(255, 255, 255, 0.08);
+  --surface-overlay-hover: rgba(255, 130, 0, 0.45);
+
+  /* Formfelder */
+  --field-bg: #ffffff;
+  --field-fg: #000000;
+
+  /* Typografie */
+  --font: "Inter", sans-serif;
+  --fs-base: 0.9rem;
+  --fs-meta: 0.7rem;
+  --fs-ref: 0.7rem;
+  --lh-base: 1.4;
+  --fw-semibold: 600;
+  --ls-tight: 0.5px;
+  --font-system: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+
+  /* Radius */
+  --radius: 6px;
+  --radius-sm: 4px;
+  --radius-lg: 8px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+
+  /* Input-Hohen */
+  --input-min-height: 40px;
+  --input-max-height: 120px;
+
+  /* Effekte */
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 0 8px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.25);
+
+  /* Motion */
+  --transition-quick: 0.2s ease;
+
+  /* Scrollbar */
+  --scrollbar-w: 8px;
+
+  /* Z-Index */
+  --z-chat: 10;
+
+  /* States */
+  --disabled-opacity: 0.5;
+  --cursor-pointer: pointer;
+}
+
+/* ---------- Grundlayout ---------- */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ---------- App Layout ---------- */
+
+
+#app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ---------- Three-Canvas ---------- */
+#three-canvas {
+  flex: 1;
+  display: block;
+  /* background: var(--bg); */
+  cursor: var(--cursor-pointer);
+}
+
+/* ---------- Chat ---------- */
+#chat-container {
+  display: flex;
+  flex-direction: column;
+  width: var(--chat-width);
+  background: var(--chat-bg);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-chat);
+}
+#chat-header {
+  padding: var(--space-3-5);
+  background: var(--chat-header-bg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-tight);
+  border-bottom: 1px solid var(--border-subtle);
+}
+#chat-messages {
+  flex: 1;
+  padding: var(--space-3) var(--space-3-5);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+#chat-messages::-webkit-scrollbar {
+  width: var(--scrollbar-w);
+}
+#chat-messages::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Nachrichten-Bubbles ---------- */
+.message-wrapper {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--space-3);
+  align-items: flex-start;
+}
+
+/* !!!: better organize the stylings*/
+.message {  
+  background: var(--bubble-bg);
+  padding: var(--space-2) var(--space-2-5);
+  border-radius: var(--radius);
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
+  word-break: break-word;
+  max-width: 85%;
+  white-space: pre-line;
+  position: relative;
+  padding-right: 58px;
+}
+.message-wrapper.self {
+  align-items: flex-end;
+}
+.message-wrapper.self .message {
+  background: var(--primary);
+  color: var(--primary-contrast);
+}
+.meta {
+  margin-top: 2px;
+  font-size: var(--fs-meta);
+  color: var(--meta-text);
+}
+.message__controls {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.message__select-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  background: transparent;
+  cursor: var(--cursor-pointer);
+}
+.message--selected .message__select-btn {
+  background: var(--primary);
+}
+.message-wrapper.self .message__select-btn {
+  border-color: #000;
+}
+.message-wrapper.self .message.message--selected .message__select-btn {
+  background: #000;
+}
+.message__delete-btn {
+  display: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0;
+  cursor: var(--cursor-pointer);
+}
+.message--selected .message__delete-btn {
+  display: inline-flex;
+}
+.message__delete-btn:hover {
+  opacity: 0.85;
+}
+
+.message-reference {
+  display: block;
+  font-size: var(--fs-ref);
+  color: var(--ref-text);
+  background: var(--ref-bg);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius);
+  margin-bottom: 5px;
+  border-left: 3px solid var(--primary);
+}
+.message-reference:hover {
+  background: var(--primary);
+  color: var(--primary-contrast);
+  cursor: var(--cursor-pointer);
+}
+
+/* ---- chat input area ---- */
+#chat-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--chat-input-bg);
+  border-top: 1px solid var(--border-subtle);
+}
+#chat-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+#chat-reference-container {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+}
+#chat-reference-label {
+  font-size: var(--fs-ref);
+  color: var(--ref-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#chat-controls .ai-switch {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.hidden {
+  display: none !important;
+}
+#input-form {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+}
+#input-field {
+  flex: 1;
+  font-size: var(--fs-base);
+  padding: var(--space-2) var(--space-2-5);
+  border: none;
+  border-radius: var(--radius);
+  background: var(--field-bg);
+  color: var(--field-fg);
+  outline: none;
+  resize: none;
+  overflow-y: auto;
+  min-height: var(--input-min-height);
+  max-height: var(--input-max-height);
+  line-height: var(--lh-base);
+}
+#send-btn {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  background: var(--primary);
+  color: var(--primary-contrast);
+  border-radius: var(--radius);
+  font-weight: var(--fw-semibold);
+  cursor: var(--cursor-pointer);
+  flex-shrink: 0;
+}
+#send-btn:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: not-allowed;
+}
+
+/* ---- AI toggle ---- */
+.ai-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-meta);
+  color: var(--meta-text);
+  cursor: var(--cursor-pointer);
+  user-select: none;
+}
+.ai-switch input {
+  display: none;
+}
+.ai-switch .slider {
+  position: relative;
+  width: 42px;
+  height: 22px;
+  background: var(--bubble-bg);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  transition: background var(--transition-quick);
+}
+.ai-switch .slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: var(--primary-contrast);
+  border-radius: 50%;
+  transition: transform var(--transition-quick);
+  box-shadow: var(--shadow-soft);
+}
+.ai-switch input:checked + .slider {
+  background: var(--primary);
+}
+.ai-switch input:checked + .slider::after {
+  transform: translateX(20px);
+}
+.ai-switch .switch-label {
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.ai-switch .switch-label-short {
+  display: none;
+}
+@media (max-width: 480px) {
+  .ai-switch .switch-label-long {
+    display: none;
+  }
+  .ai-switch .switch-label-short {
+    display: inline;
+  }
+}
+
+/* ---- Chip Button ---- */
+.chip-clear-btn {
+  border: none;
+  background: var(--surface-overlay);
+  color: var(--primary-contrast);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-lg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  cursor: var(--cursor-pointer);
+  box-shadow: var(--shadow-soft);
+  transition: background var(--transition-quick), transform var(--transition-quick);
+}
+.chip-clear-btn:hover {
+  background: var(--surface-overlay-hover);
+  transform: translateY(-1px);
+}
+.chip-clear-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+/* ---------- Marker ---------- */
+/* --- Marker-Label --- */
+marker-label {
+  background: rgba(185, 99, 0, 0.5);
+  color: var(--field-fg);
+  padding: 6px 8px;
+  border-radius: var(--radius-lg);
+  font-family: var(--font-system);
+  line-height: 1.2;
+  /* Breite passt sich an den Inhalt an: */
+  display: inline-block;
+  width: max-content;
+  max-width: none;
+  backdrop-filter: blur(1px);
+  pointer-events: none;
+  box-shadow: var(--shadow-lg);
+}
+
+/* -------- Marker-Metadaten -------- */
+.meta-wrap {
+  display: inline-block;
+  width: max-content;
+}
+
+.meta-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  width: max-content;
+}
+
+.meta-table td { padding: 2px 6px; }
+.meta-table td:first-child { font-weight: 600; opacity: 0.9; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  #app-container {
+    flex-direction: column;
+  }
+  #chat-container {
+    width: 100vw;
+    height: 50vh;
+    box-shadow: none;
+  }
+  #three-canvas {
+    width: 100vw;
+    height: 50vh;
+  }
+  #send-btn {
+    height: auto;
+    min-height: var(--input-min-height);
+  }
+  
+}
+
+/* Error snackbar styling */
+#app-error-snackbar {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  background: rgba(220, 53, 69, 0.98); /* danger */
+  color: var(--primary-contrast);
+  padding: 10px 14px; /* slightly larger */
+  border-radius: var(--radius);
+  font: 600 16px var(--font-system); /* bigger text */
+  box-shadow: var(--shadow-lg);
+  z-index: 2147483647;
+  max-width: 80vw;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+#app-error-snackbar.visible { opacity: 1; }
+
+/* Marker overflow banner (top fixed) */
+#app-marker-banner {
+  position: fixed;
+  top: 20px;                 /* same distance from edges */
+  right: 20px;               /* move to top-right */
+  background: rgba(255, 255, 255, 0.5); /* lighter towards white, same transparency as marker (0.5) */
+  color: #000;               /* readable on light bg */
+  padding: 10px 14px;
+  border-radius: 6px;
+  font: 600 16px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 2147483647;       /* keep above */
+  max-width: 90vw;
+  pointer-events: none;      /* non-interactive */
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+#app-marker-banner.visible { opacity: 1; }
+
+/* small table reset for banner */
+.meta-table--banner {
+  border-collapse: collapse;
+}
+.meta-table--banner td {
+  padding: 2px 8px;
+  vertical-align: middle;
+}
+.meta-table--banner td:first-child {
+  opacity: 0.8; /* label column slightly dimmed */
+}
+
+===== D:\1-Red\-WORK-\Uni\Bachelorarbeit\BA Projekt\ProjektThreeJS\my-threejs-app\index.html =====
+<!-- "Standards Mode" that CSS works -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Emojis/More lang -->
+    <meta charset="utf-8" />
+    <title>IFC Viewer - Chat</title>
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1"
+    />
+    <!-- CSS laods before JS, so starts styled -->
+    <link
+      rel="stylesheet"
+      href="/style.css"
+    />
+  </head>
+
+  <body>
+    <div id="app-container">
+      <div id="chat-container">
+        <div id="chat-header">Chat</div>
+        <div id="chat-messages"></div>
+        <div id="chat-input">
+          <div id="chat-controls">
+            <div
+              id="chat-reference-container"
+              class="hidden"
+            >
+              <button
+                id="clear-reference-btn"
+                class="chip-clear-btn"
+                aria-label="clear"
+              >
+                &times;
+              </button>
+              <!-- &times means Multiplication in HTML -->
+              <span id="chat-reference-label"></span>
+            </div>
+            <!-- in Form Enter (no Shift) -->
+            <label class="ai-switch">
+              <span class="switch-label">
+                <span class="switch-label-short">AI</span>
+                <span class="switch-label-long">AI Switch</span>
+              </span>
+              <input
+                id="ai-toggle"
+                type="checkbox"
+                checked
+              />
+              <span
+                class="slider"
+                aria-hidden="true"
+              ></span>
+            </label>
+          </div>
+          <form id="input-form">
+            <textarea
+              id="input-field"
+              autocomplete="off"
+            ></textarea>
+            <button
+              id="send-btn"
+              type="submit"
+            >
+              Send
+            </button>
+          </form>
+        </div>
+      </div>
+      <div id="three-canvas"></div>
+    </div>
+    <!-- ---------- Marker Template ---------- -->
+    <template id="marker-template">
+      <marker-label class="meta-wrap">
+        <table class="meta-table">
+          <tbody>
+            <tr>
+              <td>Local ID</td>
+              <td class="val-localid"></td>
+            </tr>
+            <tr>
+              <td>Name</td>
+              <td class="val-name"></td>
+            </tr>
+            <tr>
+              <td>ObjectType</td>
+              <td class="val-objecttype"></td>
+            </tr>
+            <tr>
+              <td>Tag</td>
+              <td class="val-tag"></td>
+            </tr>
+            <tr>
+              <td>Category</td>
+              <td class="val-category"></td>
+            </tr>
+          </tbody>
+        </table>
+      </marker-label>
+    </template>
+    <!-- ---------- Marker Banner Template (top-right) ---------- -->
+    <template id="marker-banner-template">
+      <table class="meta-table meta-table--banner">
+        <tbody>
+          <tr>
+            <td>Local ID</td>
+            <td class="val-localid"></td>
+          </tr>
+          <tr>
+            <td>Name</td>
+            <td class="val-name"></td>
+          </tr>
+          <tr>
+            <td>ObjectType</td>
+            <td class="val-objecttype"></td>
+          </tr>
+          <tr>
+            <td>Tag</td>
+            <td class="val-tag"></td>
+          </tr>
+          <tr>
+            <td>Category</td>
+            <td class="val-category"></td>
+          </tr>
+        </tbody>
+      </table>
+    </template>
+    <!-- type="module" activates ES-Modul-Loader in Browsers (import/export, Deferred-Load) -->
+    <script
+      type="module"
+      src="/src/main.js"
+    ></script>
+  </body>
+</html>
+
+
+
+

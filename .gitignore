@@ -15,7 +15,13 @@ yarn-error.log*
 Thumbs.db
 
 # Environment variables
-.env.*
 .env
-
+.env.*
 .vscode/extensions.json
+
+# Vercel/Netlify metadata
+.vercel
+.netlify
+
+*.patch
+*.backup
