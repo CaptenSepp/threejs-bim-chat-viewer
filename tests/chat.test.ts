@@ -25,7 +25,7 @@ beforeEach(async () => { // sets up a minimal DOM for tests to simulate browser 
   document.body.innerHTML = `
     <div id="chat-messages"></div>
     <form id="input-form"></form>
-    <input id="input-field" />
+    <textarea id="input-field"></textarea>
     <div id="chat-reference-container" class="hidden"></div>
     <span id="chat-reference-label"></span>
     <button id="clear-reference-btn"></button>
@@ -45,8 +45,10 @@ afterEach(() => {
 describe('chat references', () => {
   it('sets and clears reference', () => {
     setComposerReference({ label: 'Item 1', modelId: 'm1', itemId: 1 });   // simulate setting a 3D chat reference (reference)
-    const refText = document.getElementById('chat-reference-label') as HTMLElement; // test DOM contains this label
-    const container = document.getElementById('chat-reference-container') as HTMLElement; // test DOM contains this container
+    const refText = document.getElementById('chat-reference-label');
+    const container = document.getElementById('chat-reference-container');
+    if (!(refText instanceof HTMLSpanElement)) throw new Error('Missing #chat-reference-label');
+    if (!(container instanceof HTMLDivElement)) throw new Error('Missing #chat-reference-container');
 
     expect(refText.textContent).toBe('Item 1');                            // expects label to show selected item
     expect(container.classList.contains('hidden')).toBe(false);            // expects chip to be visible
@@ -60,9 +62,12 @@ describe('chat references', () => {
 
 describe('chat delete button removal', () => {
   it('removes one specific message after browser confirmation', async () => {
-    const inputField = document.getElementById('input-field') as HTMLInputElement;
-    const inputForm = document.getElementById('input-form') as HTMLFormElement;
-    const chatMessages = document.getElementById('chat-messages') as HTMLElement;
+    const inputField = document.getElementById('input-field');
+    const inputForm = document.getElementById('input-form');
+    const chatMessages = document.getElementById('chat-messages');
+    if (!(inputField instanceof HTMLTextAreaElement)) throw new Error('Missing #input-field');
+    if (!(inputForm instanceof HTMLFormElement)) throw new Error('Missing #input-form');
+    if (!(chatMessages instanceof HTMLDivElement)) throw new Error('Missing #chat-messages');
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true); // browser confirm should allow deletion in this test
 
     inputField.value = 'First';                                            // prepare the first message to create visible chat entries
@@ -74,10 +79,10 @@ describe('chat delete button removal', () => {
     expect(chatMessages.children).toHaveLength(2);                         // make sure both messages were rendered before the shortcut runs
 
     const selectButtons = chatMessages.querySelectorAll('.message__select-btn');
-    (selectButtons[0] as HTMLButtonElement).click();                     // select first message to show its delete button
+    selectButtons[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true })); // select first message to show its delete button
 
     const deleteButtons = chatMessages.querySelectorAll('.message__delete-btn');
-    (deleteButtons[0] as HTMLButtonElement).click();                     // remove the first selected message only
+    deleteButtons[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true })); // remove the first selected message only
 
     expect(chatMessages.children).toHaveLength(1);                         // only the last rendered message should be removed
     expect(localStorage.getItem('chat-history')).not.toContain('First');   // removed message should no longer exist in storage

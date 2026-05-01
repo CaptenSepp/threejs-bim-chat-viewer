@@ -7,7 +7,9 @@ import { applySelHighlight, setRaycastEvents } from "./modules/target/raycaster.
 import { displayUserErrorSnackbar } from "./ui/error-notify.js";
 import type { ModelSelectionType, ViewerWorldType } from "./types/app-types.js";
 
-const viewerContainer = document.getElementById("three-canvas") as HTMLElement; // canvas host exists in index.html
+const viewerContainerElement = document.getElementById("three-canvas");
+if (!(viewerContainerElement instanceof HTMLElement)) throw new Error("Missing #three-canvas");
+const viewerContainer = viewerContainerElement; // canvas host exists in index.html
 
 
 async function init() { // wrap startup in async init to avoid top-level await parse issues
@@ -38,14 +40,14 @@ async function init() { // wrap startup in async init to avoid top-level await p
     // await fitCameraToSelBox(world, selection); // focus camera on selection for commented for later uses
   }
 
-  setRaycastEvents(engineComponents, world as ViewerWorldType, applySelEffects);
+  setRaycastEvents(engineComponents, world, applySelEffects);
 
   // loads IFC or FRAG and prepares marker overlay (initialization)
   // await loadModelAutoDetect(engineComponents, fragments, "/model/custom_psets.ifc");
   await loadModelAutoDetect(engineComponents, fragments, "/fragments/school_str.frag");
 
   setMarker(engineComponents);
-  initMarkerVisibilityWatcher(world as ViewerWorldType); // start camera listener for banner visibility
+  initMarkerVisibilityWatcher(world); // start camera listener for banner visibility
 }
 
 // catch startup errors and show to user

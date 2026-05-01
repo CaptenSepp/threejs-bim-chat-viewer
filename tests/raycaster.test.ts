@@ -1,4 +1,4 @@
-import { Raycasters } from '@thatopen/components';
+import { FragmentsManager, Raycasters } from '@thatopen/components';
 import type { Components } from '@thatopen/components';
 import type { ViewerWorldType } from '../src/types/app-types.js';
 import { describe, expect, it, vi } from 'vitest';
@@ -38,12 +38,12 @@ describe('raycaster applySelectionHighlight', () => {
 describe('raycaster setupRaycastEvents', () => {
   it('invokes handler with ray hit ids on click', async () => {
     const handleRaycastSelection = vi.fn();
+    const handlers: Record<string, (event: MouseEvent) => Promise<void> | void> = {}; // store callbacks by event name for manual triggering
 
     // fake canvas that collects event handlers to trigger the click handler manually
     const canvas = {
-      handlers: {} as Record<string, (event: MouseEvent) => Promise<void> | void>, // Add handlers bucket to store event callbacks
       addEventListener: vi.fn((event, handler) => { // Fake addEventListener to save the handler instead of real DOM (mock)
-        canvas.handlers[event] = handler; // Store the handler by event name (e.g., 'click')
+        handlers[event] = handler; // Store the handler by event name (e.g., 'click')
       })
     };
 
@@ -59,14 +59,20 @@ describe('raycaster setupRaycastEvents', () => {
 
     // services to retrieve the raycaster instance to inject our mock into the code path
     const raycastersService = { get: vi.fn(() => raycaster) };
-    const engineComponents = { get: vi.fn(() => raycastersService) };
+    const fragmentsService = { resetHighlight: vi.fn(), core: { update: vi.fn() } };
+    const getSpy = vi.fn();
+    function get(service: typeof FragmentsManager | typeof Raycasters) {
+      getSpy(service);
+      return service === Raycasters ? raycastersService : fragmentsService;
+    }
+    const engineComponents = { get };
 
     // initialize and then simulate a click event to test the end-to-end selection flow
     setRaycastEvents(engineComponents as unknown as Components, world as unknown as ViewerWorldType, handleRaycastSelection);
-    await canvas.handlers.click(new MouseEvent('click'));
+    await handlers.click(new MouseEvent('click'));
 
     // handler should receive the IDs from the raycast result
-    expect(engineComponents.get).toHaveBeenCalledWith(Raycasters);
+    expect(getSpy).toHaveBeenCalledWith(Raycasters);
     expect(raycaster.mouse.updateMouseInfo).toHaveBeenCalled();
     expect(handleRaycastSelection).toHaveBeenCalledWith({ modelId: 'model1', itemId: 7 });
   });

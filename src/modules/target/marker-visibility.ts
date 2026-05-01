@@ -7,7 +7,14 @@ import type { Camera, Vector3 } from "three";
 import type { MarkerAttributesType, ViewerWorldType } from "../../types/app-types.js";
 
 type CameraControlsLike = {
-  addEventListener(type: "change" | "update", listener: () => void): void;
+  addEventListener(type: string, listener: () => void): void;
+};
+
+type MarkerVisibilityWorldType = {
+  camera: {
+    three: Camera;
+    controls?: CameraControlsLike | null;
+  };
 };
 
 let activeMarkerWorldPos: Vector3 | null = null; // current marker world position to project and test visibility
@@ -15,11 +22,11 @@ let activeMarkerAttrs: MarkerAttributesType | null = null; // current marker att
 let cameraThree: Camera | null = null; // cached THREE camera instance for fast access (avoids re-reading world each time)
 let camControls: CameraControlsLike | null = null; // cached camera controls to listen for user-driven camera moves
 
-export function initMarkerVisibilityWatcher(world: ViewerWorldType): void {
+export function initMarkerVisibilityWatcher(world: MarkerVisibilityWorldType): void {
   // Initialize once: listen to camera changes
   try {
-    cameraThree = world.camera.three as Camera; // grab the underlying THREE camera
-    camControls = world.camera.controls as unknown as CameraControlsLike; // controls fire 'change' whenever the user pans/zooms/rotates
+    cameraThree = world.camera.three; // grab the underlying THREE camera
+    camControls = world.camera.controls ?? null; // controls fire 'change' whenever the user pans/zooms/rotates
     if (camControls && typeof camControls.addEventListener === "function") {
       camControls.addEventListener("change", onCameraChange); // subscribe once to keep banner in sync with camera
       camControls.addEventListener("update", onCameraChange); // some controls fire only 'update' events
@@ -81,14 +88,13 @@ function isWorldPosInView(worldPos: Vector3, camera: Camera) {
 
 function buildBannerHtml(attrs: MarkerAttributesType) {
   // Clone template and fill text values for the banner
-  const tpl = document.getElementById(
-    "marker-banner-template",
-  ) as HTMLTemplateElement | null; // find the template in index.html
+  const tplElement = document.getElementById("marker-banner-template"); // find the template in index.html
+  const tpl = tplElement instanceof HTMLTemplateElement ? tplElement : null;
   if (tpl && tpl.content && tpl.content.firstElementChild) {
     // ensure template exists and has an element inside
-    const element = tpl.content.firstElementChild.cloneNode(
-      true,
-    ) as HTMLElement; // deep-clone the template content (detached DOM)
+    const clonedElement = tpl.content.firstElementChild.cloneNode(true);
+    if (!(clonedElement instanceof HTMLElement)) return "";
+    const element = clonedElement; // deep-clone the template content (detached DOM)
     applyMarkerLabelValues(
       // fill the 5 cells via textContent (safe, no HTML injection)
       element,

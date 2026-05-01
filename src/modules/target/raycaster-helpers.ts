@@ -1,5 +1,5 @@
 import { FragmentsManager } from "@thatopen/components";
-import type { Components } from "@thatopen/components";
+import type { Components, SimpleRaycaster } from "@thatopen/components";
 import * as THREE from "three";
 import { removeActiveMarker } from "./marker.js";
 import type { ModelSelectionType } from "../../types/app-types.js";
@@ -9,10 +9,24 @@ type RayHit = {
   localId: number;
 };
 
-export type RaycasterLike = {
-  mouse: { updateMouseInfo: (event: MouseEvent) => void };
-  castRay: () => Promise<RayHit | null>;
+type RaycasterLike = Pick<SimpleRaycaster, "mouse" | "castRay">;
+type CastRayResultType = Awaited<ReturnType<SimpleRaycaster["castRay"]>>;
+type FragmentsManagerType = {
+  resetHighlight(): void;
+  getBBoxes?(items: Record<string, Set<number>>): Promise<THREE.Box3[]>;
+  core?: { update(force: boolean): void };
 };
+
+function updateMouseInfoFromRaycaster(raycaster: RaycasterLike, event: MouseEvent): void {
+  const updateMouseInfo = Reflect.get(raycaster.mouse, "updateMouseInfo"); // read hidden helper from library mouse object
+  if (typeof updateMouseInfo === "function") {                              // call it only when it exists at runtime
+    Reflect.apply(updateMouseInfo, raycaster.mouse, [event]);
+  }
+}
+
+function isRayHit(value: CastRayResultType): value is CastRayResultType & RayHit {
+  return !!value && "fragments" in value && "localId" in value;            // keep only hits with the fields this app uses
+}
 
 async function buildSelFromRayHit(
   engineComponents: Components,
@@ -23,7 +37,7 @@ async function buildSelFromRayHit(
   const itemId = rayHit.localId; // item identifier (local id)
   let sel: ModelSelectionType = { modelId, itemId }; // minimal selection payload(data package) (fallback(backup/default)) to keep working when fragments API is unavailable, when there is no more data coming
   try {
-    const fragMan = engineComponents.get(FragmentsManager); // get fragment manager if available
+    const fragMan = engineComponents.get(FragmentsManager) as unknown as FragmentsManagerType; // get fragment manager if available
     if (fragMan && typeof fragMan.getBBoxes === "function") {
       const [bBox] = await fragMan.getBBoxes({ [modelId]: new Set([itemId]) }); // fetch bounding box (Box3) to compute framing and marker position
       const vector3Center = bBox.getCenter(new THREE.Vector3()); // compute center (Vector3)
@@ -41,10 +55,10 @@ export async function handleCanvasClick(
   raycaster: RaycasterLike,
   applySelEffects: (sel: ModelSelectionType) => void | Promise<void>,
 ) {
-  raycaster.mouse.updateMouseInfo(event); // lines up the laser with the mouse point
+  updateMouseInfoFromRaycaster(raycaster, event); // lines up the laser with the mouse point
   const rayHit = await raycaster.castRay(); // cast a ray and wait for a hit (Important: internally a lot of things happen which result in paring each hit to exact locaId of the selected element)
 
-  if (rayHit) {
+  if (isRayHit(rayHit)) {
     const sel = await buildSelFromRayHit(engineComponents, rayHit); // build selection data from the hit to include ids and bBox
     applySelEffects(sel); // hand selection to caller for effects (callback)
     return;
@@ -56,7 +70,7 @@ export function handleEscapeKey(
   engineComponents: Components,
 ) {
   if (e.key === "Escape") {
-    const fragMan = engineComponents.get(FragmentsManager);
+    const fragMan = engineComponents.get(FragmentsManager) as unknown as FragmentsManagerType;
     fragMan.resetHighlight(); // clear current highlight
     fragMan.core?.update(true);
     removeActiveMarker();

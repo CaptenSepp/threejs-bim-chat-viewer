@@ -1,13 +1,27 @@
 import { escapeHTML } from "../../../core/utils.js";
 import type { AppendMessageOptionsType, ChatMessageType, ModelReferenceType } from "../../../types/app-types.js";
 
-export const chatMessages = document.getElementById('chat-messages') as HTMLElement;
-export const inputForm = document.getElementById('input-form') as HTMLFormElement;
-export const inputField = document.getElementById('input-field') as HTMLInputElement;
-export const referenceContainer = document.getElementById('chat-reference-container') as HTMLElement;
-export const referenceLabel = document.getElementById('chat-reference-label') as HTMLElement;
-export const clearReferenceBtn = document.getElementById('clear-reference-btn') as HTMLButtonElement;
-export const aiToggle = document.getElementById('ai-toggle') as HTMLInputElement | null;
+const chatMessagesElement = document.getElementById('chat-messages');
+if (!(chatMessagesElement instanceof HTMLElement)) throw new Error('Missing #chat-messages');
+export const chatMessages = chatMessagesElement;
+const inputFormElement = document.getElementById('input-form');
+if (!(inputFormElement instanceof HTMLFormElement)) throw new Error('Missing #input-form');
+export const inputForm = inputFormElement;
+const inputFieldElement = document.getElementById('input-field');
+if (!(inputFieldElement instanceof HTMLTextAreaElement)) throw new Error('Missing #input-field');
+export const inputField = inputFieldElement;
+const referenceContainerElement = document.getElementById('chat-reference-container');
+if (!(referenceContainerElement instanceof HTMLElement)) throw new Error('Missing #chat-reference-container');
+export const referenceContainer = referenceContainerElement;
+const referenceLabelElement = document.getElementById('chat-reference-label');
+if (!(referenceLabelElement instanceof HTMLElement)) throw new Error('Missing #chat-reference-label');
+export const referenceLabel = referenceLabelElement;
+const clearReferenceBtnElement = document.getElementById('clear-reference-btn');
+if (!(clearReferenceBtnElement instanceof HTMLButtonElement)) throw new Error('Missing #clear-reference-btn');
+export const clearReferenceBtn = clearReferenceBtnElement;
+const aiToggleElement = document.getElementById('ai-toggle');
+if (aiToggleElement !== null && !(aiToggleElement instanceof HTMLInputElement)) throw new Error('Invalid #ai-toggle');
+export const aiToggle = aiToggleElement;
 
 function createReferenceChip(reference: ModelReferenceType) { // creates a clickable chip that jumps back to the 3D selection (UI chip)
   const clickableRefTag = document.createElement('div'); // container element for the chip

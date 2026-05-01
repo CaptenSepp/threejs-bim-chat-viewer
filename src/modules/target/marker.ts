@@ -9,17 +9,23 @@ let markerLabelElemTemp: HTMLElement;                          // cloned HTML el
 let activeMarkerInstId: string | null;                         // id/handle of the currently shown marker (for deletion/replacement)
 
 export function setMarker(engineComponents: Components): void {                                                                  // prepares HTML overlay (initialization)
-  const markerTemplateElement = document.getElementById("marker-template");                                                     // find the template in index.html
-  markerLabelElemTemp = ((markerTemplateElement as HTMLTemplateElement).content.firstElementChild as HTMLElement).cloneNode(true) as HTMLElement; // clone label element (detached DOM node)
-  markerServInst = engineComponents.get(ThatOpenFront.Marker) as MarkerServiceType;                                              // get Marker service
+  const markerTemplateNode = document.getElementById("marker-template");                                                        // find the template in index.html
+  if (!(markerTemplateNode instanceof HTMLTemplateElement)) throw new Error("Missing #marker-template");
+  const markerTemplateElement = markerTemplateNode;
+  const markerTemplateChild = markerTemplateElement.content.firstElementChild;
+  if (!(markerTemplateChild instanceof HTMLElement)) throw new Error("Template #marker-template has no HTML child");
+  const markerLabelClone = markerTemplateChild.cloneNode(true);
+  if (!(markerLabelClone instanceof HTMLElement)) throw new Error("Template #marker-template clone is invalid");
+  markerLabelElemTemp = markerLabelClone; // clone label element (detached DOM node)
+  markerServInst = engineComponents.get(ThatOpenFront.Marker);                                                                   // get Marker service
 }
 
-export async function renderMarkerForSel(engineComponents: Components, world: unknown, sel: ModelSelectionType): Promise<MarkerAttributesType> { // shows marker and fills metadata
+export async function renderMarkerForSel(engineComponents: Components, world: ViewerWorldType, sel: ModelSelectionType): Promise<MarkerAttributesType> { // shows marker and fills metadata
   const attrs = await getSelectionAttributes(engineComponents, sel);
   const { markerName, markerObjectType, markerTag, markerCategory, markerLocalId } = createMarkerValues(attrs);
   applyMarkerLabelValues(markerLabelElemTemp, markerName, markerObjectType, markerTag, markerCategory, markerLocalId);
   const markerWorldPosition = computeMarkerWorldPosition(sel);
-  activeMarkerInstId = updateMarkerInstance(markerServInst, activeMarkerInstId, world as ViewerWorldType, markerLabelElemTemp, markerWorldPosition);
+  activeMarkerInstId = updateMarkerInstance(markerServInst, activeMarkerInstId, world, markerLabelElemTemp, markerWorldPosition);
   updateActiveMarkerContext(markerWorldPosition, {                                                                              // forward world position + attributes to watcher
     name: markerName,
     objectType: markerObjectType,

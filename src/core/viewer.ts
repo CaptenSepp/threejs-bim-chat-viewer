@@ -1,10 +1,10 @@
 import * as TOC from "@thatopen/components"; // core engine classes (components)
 import * as TOF from "@thatopen/components-front";
-import type { OrthographicCamera, PerspectiveCamera, Scene } from "three";
 import { createWorkerObjectUrl } from "./utils.js";
+import type { FragmentModelType } from "../types/app-types.js";
 
 type CameraControlsLike = {
-  addEventListener(type: "change" | "update", listener: (e: unknown) => void): void;
+  addEventListener(type: string, listener: () => void): void;
 };
 
 // sets up the 3D viewer and engine (initialization)
@@ -14,10 +14,12 @@ export async function createViewerEngine(viewerContainer: HTMLElement) {
                                                                                
   const worlds = engineComponents.get(TOC.Worlds);                                   // create world and scene
   const world = worlds.create();
-  const simpleScene = new TOC.SimpleScene(engineComponents) as TOC.SimpleScene;
+  const simpleScene = new TOC.SimpleScene(engineComponents);
   world.scene = simpleScene;
   simpleScene.setup();
-  (world.scene.three as Scene).background = null;                                    // transparent background (no color)
+  if ("background" in world.scene.three) {
+    world.scene.three.background = null;                                             // transparent background (no color)
+  }
 
                                                                                
   world.renderer = new TOF.PostproductionRenderer(engineComponents, viewerContainer);// renderer and camera setup
@@ -35,9 +37,10 @@ export async function createViewerEngine(viewerContainer: HTMLElement) {
   fragments.init(workerObjectUrl);                                                   // boot fragments with the worker (init)
 
   // keep fragments up-to-date with camera/scene changes
-  (world.camera.controls as CameraControlsLike).addEventListener("change", () => fragments.core.update(true)); // recompute on camera move
-  fragments.list.onItemSet.add(({ value: model }) => {  // when a fragment model loads, attach it
-    model.useCamera(world.camera.three as PerspectiveCamera | OrthographicCamera); // link model shaders to camera (camera binding) to ensure correct uniforms
+  const cameraControls: CameraControlsLike | undefined = world.camera.controls;
+  cameraControls?.addEventListener("change", () => fragments.core.update(true)); // recompute on camera move
+  fragments.list.onItemSet.add(({ value: model }: { value: FragmentModelType }) => {  // when a fragment model loads, attach it
+    model.useCamera(world.camera.three);                                             // link model shaders to camera (camera binding) to ensure correct uniforms
     world.scene.three.add(model.object);                // add model to scene graph to render it
     fragments.core.update(true);                        // force a render update
   });
