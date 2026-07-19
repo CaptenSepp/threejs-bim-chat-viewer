@@ -75,6 +75,7 @@ export async function handleAssistantResponse(
       previousChatHistory: messageHistory, // Pass current chat history
       selectedModelReference: userMessage.reference, // Optional 3D selection pass the user message reference
     });
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     const assistantMessage: ChatMessageType = {
       time: Date.now(),
       reference: null,
