@@ -1,24 +1,18 @@
 import { escapeHTML } from "../../../core/utils.js";
 import type { AppendMessageOptionsType, ChatMessageType, ModelReferenceType } from "../../../types/app-types.js";
 
-const chatMessagesElement = document.getElementById('chat-messages');
-if (!(chatMessagesElement instanceof HTMLElement)) throw new Error('Missing #chat-messages');
-export const chatMessages = chatMessagesElement;
-const inputFormElement = document.getElementById('input-form');
-if (!(inputFormElement instanceof HTMLFormElement)) throw new Error('Missing #input-form');
-export const inputForm = inputFormElement;
-const inputFieldElement = document.getElementById('input-field');
-if (!(inputFieldElement instanceof HTMLTextAreaElement)) throw new Error('Missing #input-field');
-export const inputField = inputFieldElement;
-const referenceContainerElement = document.getElementById('chat-reference-container');
-if (!(referenceContainerElement instanceof HTMLElement)) throw new Error('Missing #chat-reference-container');
-export const referenceContainer = referenceContainerElement;
-const referenceLabelElement = document.getElementById('chat-reference-label');
-if (!(referenceLabelElement instanceof HTMLElement)) throw new Error('Missing #chat-reference-label');
-export const referenceLabel = referenceLabelElement;
-const clearReferenceBtnElement = document.getElementById('clear-reference-btn');
-if (!(clearReferenceBtnElement instanceof HTMLButtonElement)) throw new Error('Missing #clear-reference-btn');
-export const clearReferenceBtn = clearReferenceBtnElement;
+function getRequiredElement<T extends HTMLElement>(id: string, elementType: { new(): T }): T {
+  const element = document.getElementById(id); // find element from index.html
+  if (!(element instanceof elementType)) throw new Error(`Missing #${id}`); // stop early if HTML is wrong
+  return element;
+}
+
+export const chatMessages = getRequiredElement('chat-messages', HTMLElement);
+export const inputForm = getRequiredElement('input-form', HTMLFormElement);
+export const inputField = getRequiredElement('input-field', HTMLTextAreaElement);
+export const referenceContainer = getRequiredElement('chat-reference-container', HTMLElement);
+export const referenceLabel = getRequiredElement('chat-reference-label', HTMLElement);
+export const clearReferenceBtn = getRequiredElement('clear-reference-btn', HTMLButtonElement);
 const aiToggleElement = document.getElementById('ai-toggle');
 if (aiToggleElement !== null && !(aiToggleElement instanceof HTMLInputElement)) throw new Error('Invalid #ai-toggle');
 export const aiToggle = aiToggleElement;

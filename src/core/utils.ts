@@ -16,6 +16,14 @@ async function fetchOrThrow(resource: string, errorPrefix: string): Promise<Resp
   return res;
 }
 
+function createModelIdFromPath(path: string, extension: string): string {
+  const normalizedPath = path.replace(/\\/g, '/'); // normalize slashes for consistent model ids
+  const trimmedPath = normalizedPath.replace(/^\/+/, ''); // drop leading slashes to align with repo structure
+  const modelPath = trimmedPath || 'model'; // fallback id when path is empty
+  const fileTail = modelPath.split('/').pop() || modelPath; // use last path segment for nicer ids
+  return fileTail.replace(new RegExp(`${extension}$`, 'i'), '') || fileTail; // drop file suffix
+}
+
 export async function createWorkerObjectUrl(url: string): Promise<string> {
   try {
     const workerResponse = await fetchOrThrow(url, 'Failed to fetch worker at');
@@ -33,11 +41,7 @@ export async function loadFragmentsFromPath(fragments: FragmentLoaderType, path 
   try {
     const file = await fetchOrThrow(path, 'Failed to fetch fragments at');
     const buffer = await file.arrayBuffer();
-    const normalizedPath = path.replace(/\\/g, '/');        // normalize slashes for consistent model ids
-    const trimmedPath = normalizedPath.replace(/^\/+/, ''); // drop leading slashes to align with repo structure
-    let modelId = trimmedPath || 'model';                   // derive a stable identifier from the fragment path
-    const fileTail = modelId.split('/').pop() || modelId;   // collapse to last path segment for nicer ids
-    modelId = fileTail.replace(/\.frag$/i, '') || fileTail; // drop .frag suffix to keep clean name
+    const modelId = createModelIdFromPath(path, "\\.frag"); // derive a stable identifier from the fragment path
     await fragments.core.load(buffer, { modelId });         // register model with derived identifier so selections report current file,  parses data internally to real objects
   } catch (error) {
     console.error(`Error loading fragments from ${path}:`, error);
@@ -55,11 +59,7 @@ export async function loadIfcFromPath(components: Components, path = "/model/cus
       autoSetWasm: false,
       wasm: { path: "https://unpkg.com/web-ifc@0.0.70/", absolute: true },
     });
-    const normalizedPath = path.replace(/\\/g, '/');                // normalize slashes for model id
-    const trimmedPath = normalizedPath.replace(/^\/+/, '');         // drop leading slashes
-    let modelId = trimmedPath || 'model';                           // stable id from path
-    const fileTail = modelId.split('/').pop() || modelId;           // last segment
-    modelId = fileTail.replace(/\.ifc$/i, '') || fileTail;          // drop .ifc extension
+    const modelId = createModelIdFromPath(path, "\\.ifc");          // stable id from path without .ifc suffix
     await ifcLoader.load(bytes, true, modelId);                     // convert IFC -> FRAG and load
   } catch (error) {
     console.error(`Error loading IFC from ${path}:`, error);

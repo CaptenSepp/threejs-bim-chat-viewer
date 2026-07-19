@@ -17,12 +17,11 @@ export default function createChatProxyPlugin(): Plugin {                       
         try {
           const requestBody = await parseHttpRequestJsonBody(httpRequest);                                                  // parse JSON request body from stream, If the browser sent { "message": "Hello" }, then requestBody.message is "Hello"
           const { userMessageText, promptText } = buildPromptData(requestBody);
-          console.log('[Gemini prompt]', promptText);                                                              // debug prompt preview
           if (!userMessageText) return sendHttpJsonResponse(httpResponse, 400, { error: 'Missing message' });      // reject when client sends empty input
-          const openAiApiKey = process.env.GOOGLE_API_KEY;                                                         // read local dev API key from environment (never exposed to browser), Looks for your OpenAI API key in your dev machine's environment variables
-          if (!openAiApiKey) return sendHttpJsonResponse(httpResponse, 500, { error: 'GOOGLE_API_KEY missing' });  // fail fast if key is not set locally
-          const googleModels = getGoogleModels();                                                                  // model fallback list
-          const assistantReplyText = await fetchAssistantReplyText(googleModels, promptText, openAiApiKey);
+          const groqApiKey = process.env.GROQ_API_KEY;                                                             // read local server-only keys from .env.local
+          const googleApiKey = process.env.GOOGLE_API_KEY;
+          if (!groqApiKey && !googleApiKey) return sendHttpJsonResponse(httpResponse, 500, { error: 'GROQ_API_KEY and GOOGLE_API_KEY missing' });
+          const assistantReplyText = await fetchAssistantReplyText(getGoogleModels(), promptText, googleApiKey, groqApiKey); // try Groq first, then Google
           if (!assistantReplyText) return sendHttpJsonResponse(httpResponse, 502, { error: 'Upstream error' });    // propagate upstream failure (bad gateway) if all models failed
           return sendHttpJsonResponse(httpResponse, 200, { reply: assistantReplyText });                           // respond to client with reply payload
         } catch {                                                                                                  // shield internal errors in dev proxy

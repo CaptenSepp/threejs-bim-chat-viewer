@@ -31,11 +31,15 @@ function parseStoredMessageHistory(): ChatMessageType[] {
 
 export const messageHistory = parseStoredMessageHistory();
 
-export function pushHistoryUserMessage(userMessage: ChatMessageType) {
-  messageHistory.push(userMessage);
+function pushChatMessage(message: ChatMessageType) {
+  messageHistory.push(message); // Save message to in-memory chat history
   const historyIndex = messageHistory.length - 1; // capture index of the newly stored message
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Push (Persist) to local storage to restore chat after reload
-  appendMessageToChat(userMessage, { historyIndex }); // Render user message with delete target index
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist chat history after every change
+  appendMessageToChat(message, { historyIndex }); // Render message with delete target index
+}
+
+export function pushHistoryUserMessage(userMessage: ChatMessageType) {
+  pushChatMessage(userMessage);
 }
 
 export function removeHistoryMessageByIndex(
@@ -52,17 +56,11 @@ export function removeHistoryMessageByIndex(
 
 
 function pushAssistantMessage(assistantMessage: ChatMessageType) {
-  messageHistory.push(assistantMessage); // Save assistant message to in-memory array
-  const historyIndex = messageHistory.length - 1; // capture index to enable per-message deletion
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist updated chat with the AI reply
-  appendMessageToChat(assistantMessage, { historyIndex }); // Show the AI answer in the chat UI
+  pushChatMessage(assistantMessage); // Save, persist, and render assistant reply
 }
 
 function pushErrorMessage(errMsg: ChatMessageType) {
-  messageHistory.push(errMsg); // Store the error message in history (state)
-  const historyIndex = messageHistory.length - 1; // capture index to enable per-message deletion
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(messageHistory)); // Persist the error in localStorage (persistence)
-  appendMessageToChat(errMsg, { historyIndex }); // Show the error in the chat so the user knows (feedback)
+  pushChatMessage(errMsg); // Save, persist, and render the error message
 }
 
 export async function handleAssistantResponse(

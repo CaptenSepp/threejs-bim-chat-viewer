@@ -38,13 +38,36 @@ export function getGoogleModels(): string[] {
     .filter(Boolean);
 }
 
-export async function fetchAssistantReplyText(googleModels: string[], promptText: string, openAiApiKey: string): Promise<string> {
+export async function fetchAssistantReplyText(googleModels: string[], promptText: string, googleApiKey?: string, groqApiKey?: string): Promise<string> {
+  if (groqApiKey) {                                                    // try Groq before the Google fallback
+    try {
+      const groqHttpResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',                            // stable default Groq chat model
+          messages: [{ role: 'user', content: promptText }],
+          temperature: 0.3,
+          max_completion_tokens: 600,
+        }),
+      });
+      const groqResponseJson = groqHttpResponse.ok
+        ? await groqHttpResponse.json() as { choices?: { message?: { content?: JsonValue } }[] }
+        : undefined;
+      const groqReplyText = groqResponseJson?.choices?.[0]?.message?.content?.toString().trim() || '';
+      if (groqReplyText) return groqReplyText;
+    } catch {
+      console.log('Groq upstream request failed');
+    }
+  }
+
+  if (!googleApiKey) return '';                                        // Google is only the fallback
   let assistantReplyText = '';                                        // collect reply on first success
   for (const model of googleModels) {                                 // try each model until one succeeds
     const openAiHttpResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'
       + encodeURIComponent(model)
       + ':generateContent?key='
-      + encodeURIComponent(openAiApiKey), {                           // call OpenAI upstream (Chat Completions), This is the "real" AI server.
+      + encodeURIComponent(googleApiKey), {                           // call Google's Gemini API without exposing the key
       method: 'POST',                                                 // HTTP POST to send a JSON body
       headers: {
         'Content-Type': 'application/json',                           //  says "I'm sending JSON"

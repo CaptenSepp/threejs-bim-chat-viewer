@@ -1,4 +1,4 @@
-# IFC Chat Viewer (Prototyp)
+# 3DNest App (Prototyp)
 
 Dies ist ein kleines Uni-Projekt, mit dem sich IFC-Modelle im Browser mit Three.js betrachten lassen.  
 Man kann Bauteile anklicken und im Viewer hervorheben sowie den Chat mit Bezug auf das ausgewählte Element nutzen.

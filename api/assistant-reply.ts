@@ -18,23 +18,23 @@ export async function POST(request: Request) {
       return Response.json({ error: "Missing message" }, { status: 400 });
     }
 
-    // Read the secret key from Vercel environment variables.
+    // Read both secret keys from Vercel environment variables.
+    const groqApiKey = process.env.GROQ_API_KEY;
     const googleApiKey = process.env.GOOGLE_API_KEY;
-    // Return a clear error if the key is missing on the server.
-    if (!googleApiKey) {
+    // At least one provider must be configured on the server.
+    if (!groqApiKey && !googleApiKey) {
       return Response.json(
-        { error: "GOOGLE_API_KEY missing" },
+        { error: "GROQ_API_KEY and GOOGLE_API_KEY missing" },
         { status: 500 },
       );
     }
 
-    // Read the model list from env or fallback defaults.
-    const googleModels = getGoogleModels();
-    // Ask Google and wait for the first successful reply.
+    // Ask Groq first, then use Google if Groq fails.
     const assistantReplyText = await fetchAssistantReplyText(
-      googleModels,
+      getGoogleModels(),
       promptText,
       googleApiKey,
+      groqApiKey,
     );
 
     // Return a gateway-style error if upstream fails.
