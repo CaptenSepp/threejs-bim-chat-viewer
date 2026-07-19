@@ -5,6 +5,7 @@ import { renderMarkerForSel, setMarker } from "./modules/target/marker.js";
 import { initMarkerVisibilityWatcher } from "./modules/target/marker-visibility.js";
 import { applySelHighlight, setRaycastEvents } from "./modules/target/raycaster.js";
 import { displayUserErrorSnackbar } from "./ui/error-notify.js";
+import { initAppGuide } from "./ui/app-guide.js";
 import type { ModelSelectionType, ViewerWorldType } from "./types/app-types.js";
 
 const viewerContainerElement = document.getElementById("three-canvas");
@@ -48,6 +49,8 @@ async function init() { // wrap startup in async init to avoid top-level await p
 
   setMarker(engineComponents);
   initMarkerVisibilityWatcher(world); // start camera listener for banner visibility
+  initAppGuide();
+  document.getElementById("start-guide-btn")?.addEventListener("click", () => initAppGuide(true));
 }
 
 // catch startup errors and show to user

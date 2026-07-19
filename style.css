@@ -119,11 +119,22 @@ body {
   z-index: var(--z-chat);
 }
 #chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: var(--space-3-5);
   background: var(--chat-header-bg);
   font-weight: var(--fw-semibold);
   letter-spacing: var(--ls-tight);
   border-bottom: 1px solid var(--border-subtle);
+}
+#start-guide-btn {
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  padding: var(--space-1) var(--space-2);
+  cursor: var(--cursor-pointer);
 }
 #chat-messages {
   flex: 1;
@@ -213,6 +224,73 @@ body {
 }
 .message__delete-btn:hover {
   opacity: 0.85;
+}
+
+/* ---------- First-Visit Guide ---------- */
+.app-guide {
+  position: fixed;
+  z-index: 100;
+  width: min(280px, calc(100vw - 24px));
+  padding: var(--space-3);
+  background: var(--field-bg);
+  color: var(--field-fg);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.app-guide--entering {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.app-guide--leaving {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.app-guide p {
+  margin: 0 0 var(--space-3);
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
+}
+.app-guide__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.app-guide__button {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  font-weight: var(--fw-semibold);
+  cursor: var(--cursor-pointer);
+}
+.app-guide__button-skip {
+  background: var(--field-bg);
+  color: var(--field-fg);
+}
+.app-guide__button-ok {
+  background: var(--primary);
+  color: var(--primary-contrast);
+}
+.app-guide__target {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.app-guide__preview-message {
+  animation: app-guide-preview-show 180ms ease-out;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.app-guide__preview-message--leaving {
+  opacity: 0;
+  transform: translateX(-12px);
+}
+@keyframes app-guide-preview-show {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
 }
 
 .message-reference {
