@@ -13,6 +13,8 @@ type GoogleResponseJson = {
   candidates?: { content?: { parts?: { text?: JsonValue }[] } }[];
 };
 
+const systemPromptText = 'Write naturally in a conversational AI-assistant style. Answer in plain text only: no tables, Markdown styling, pipes, HTML tags, bullet symbols, or numbered lists. Keep every answer under 200 words, use one or two short paragraphs, omit unnecessary details, and always finish the final sentence.';
+
 export function shouldHandleAssistantReplyRequest(httpRequest: IncomingMessage): boolean {
   return httpRequest.method === 'POST' && (httpRequest.url?.startsWith('/api/assistant-reply') ?? false);
 }
@@ -48,9 +50,9 @@ export async function fetchAssistantReplyText(googleModels: string[], promptText
         headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'openai/gpt-oss-120b',                                // Groq's production replacement for retired Llama 3.3
-          messages: [{ role: 'user', content: promptText }],
+          messages: [{ role: 'system', content: systemPromptText }, { role: 'user', content: promptText }],
           temperature: 0.3,
-          max_completion_tokens: 600,
+          max_completion_tokens: 500,
         }),
         signal: AbortSignal.timeout(15000),
       });
@@ -77,8 +79,9 @@ export async function fetchAssistantReplyText(googleModels: string[], promptText
         method: 'POST',                                               // HTTP POST to send a JSON body
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPromptText }] },
           contents: [{ role: 'user', parts: [{ text: promptText }] }],
-          generationConfig: { maxOutputTokens: 600 },
+          generationConfig: { maxOutputTokens: 500 },
         }),
         signal: AbortSignal.timeout(15000),
       });
