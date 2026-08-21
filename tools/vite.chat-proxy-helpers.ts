@@ -1,6 +1,7 @@
 import { buildReferenceSummaryForPrompt, stringifyChatHistoryForPrompt } from './vite.chat-proxy-data.js';
 import type { JsonValue } from './vite.chat-proxy-data.js';
 import type { IncomingMessage } from 'node:http';
+import { AiUpstreamError, trackAiRequestError, trackAiResponseError } from './ai-upstream-error.js';
 
 export type AssistantReplyRequestBody = {
   message?: JsonValue;
@@ -32,54 +33,59 @@ export function buildPromptData(requestBody: AssistantReplyRequestBody): { userM
 
 export function getGoogleModels(): string[] {
   return (process.env.GOOGLE_MODELS
-    || 'gemini-2.5-flash,gemini-2.5-pro,gemini-flash-latest,gemini-pro-latest')
+    || 'gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash-lite')
     .split(',')
     .map((s: string) => s.trim())
     .filter(Boolean);
 }
 
 export async function fetchAssistantReplyText(googleModels: string[], promptText: string, googleApiKey?: string, groqApiKey?: string): Promise<string> {
+  let lastUpstreamError = new AiUpstreamError('unavailable');
   if (groqApiKey) {                                                    // try Groq before the Google fallback
     try {
       const groqHttpResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',                            // stable default Groq chat model
+          model: 'openai/gpt-oss-120b',                                // Groq's production replacement for retired Llama 3.3
           messages: [{ role: 'user', content: promptText }],
           temperature: 0.3,
           max_completion_tokens: 600,
         }),
+        signal: AbortSignal.timeout(15000),
       });
+      if (!groqHttpResponse.ok) lastUpstreamError = trackAiResponseError('Groq', groqHttpResponse.status);
       const groqResponseJson = groqHttpResponse.ok
         ? await groqHttpResponse.json() as { choices?: { message?: { content?: JsonValue } }[] }
         : undefined;
       const groqReplyText = groqResponseJson?.choices?.[0]?.message?.content?.toString().trim() || '';
       if (groqReplyText) return groqReplyText;
-    } catch {
-      console.log('Groq upstream request failed');
+    } catch (error) {
+      lastUpstreamError = trackAiRequestError('Groq', error);
     }
   }
 
-  if (!googleApiKey) return '';                                        // Google is only the fallback
+  if (!googleApiKey) throw lastUpstreamError;                          // Google is only the fallback
   let assistantReplyText = '';                                        // collect reply on first success
   for (const model of googleModels) {                                 // try each model until one succeeds
-    const openAiHttpResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'
-      + encodeURIComponent(model)
-      + ':generateContent?key='
-      + encodeURIComponent(googleApiKey), {                           // call Google's Gemini API without exposing the key
-      method: 'POST',                                                 // HTTP POST to send a JSON body
-      headers: {
-        'Content-Type': 'application/json',                           //  says "I'm sending JSON"
-      },
-
-      body: JSON.stringify({                                          // minimal request model and prompt
-        contents: [                                                   // conversation messages
-          { role: 'user', parts: [{ text: promptText }] },            // system instruction
-        ],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 600 }, // cap output length 
-      }),
-    });
+    let openAiHttpResponse: Response;
+    try {
+      openAiHttpResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'
+        + encodeURIComponent(model)
+        + ':generateContent?key='
+        + encodeURIComponent(googleApiKey), {                         // call Google's Gemini API without exposing the key
+        method: 'POST',                                               // HTTP POST to send a JSON body
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: promptText }] }],
+          generationConfig: { maxOutputTokens: 600 },
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch (error) {
+      lastUpstreamError = trackAiRequestError('Google', error);
+      continue;
+    }
 
     if (openAiHttpResponse.ok) {
       const openAiResponseJson: GoogleResponseJson = await openAiHttpResponse.json();   // parse/read upstream/response JSON
@@ -87,12 +93,10 @@ export async function fetchAssistantReplyText(googleModels: string[], promptText
       break; // success
     }
 
-    // Log upstream error details to help diagnose model/key issues
-    console.log('Upstream status', openAiHttpResponse.status);
-    console.log('Upstream body', await openAiHttpResponse.text());
-
-    if (![429, 403, 503].includes(openAiHttpResponse.status)) break;  // non-quota error -> stop
+    lastUpstreamError = trackAiResponseError('Google', openAiHttpResponse.status);
+    if (![404, 429, 503].includes(openAiHttpResponse.status)) break; // try the next model when this one is unavailable or limited
   }
 
+  if (!assistantReplyText) throw lastUpstreamError;
   return assistantReplyText;
 }

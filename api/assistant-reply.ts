@@ -4,6 +4,7 @@ import {
   getGoogleModels,
 } from "../tools/vite.chat-proxy-helpers.js";
 import type { AssistantReplyRequestBody } from "../tools/vite.chat-proxy-helpers.js";
+import { AiUpstreamError } from "../tools/ai-upstream-error.js";
 
 export async function POST(request: Request) {
   // Only POST is supported here because the chat sends JSON data.
@@ -44,7 +45,10 @@ export async function POST(request: Request) {
 
     // Send the assistant reply back to the browser.
     return Response.json({ reply: assistantReplyText }, { status: 200 });
-  } catch {
+  } catch (error) {
+    if (error instanceof AiUpstreamError) {
+      return Response.json({ error: error.message }, { status: 502 });
+    }
     // Hide internal details and return one simple server error.
     return Response.json({ error: "Server error" }, { status: 500 });
   }

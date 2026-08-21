@@ -10,10 +10,19 @@ async function readTextSafely(res: Response): Promise<string> {          // safe
   try { return await res.text(); } catch { return ''; }                  // fallback to empty string if body cannot be read
 }
 
+function getErrorMessage(text: string, fallback: string): string {
+  try {
+    const parsed = JSON.parse(text) as { error?: unknown };
+    return typeof parsed.error === 'string' ? parsed.error : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 async function parseJson<TResponse>(res: Response, onErrorPrefix = 'Fehler bei Anfrage'): Promise<TResponse> { // parse JSON and surface HTTP errors consistently
   if (!res.ok) {                                                         // non-2xx -> treat as error
     const text = await readTextSafely(res);                              // try to get error text from server
-    const msg = text || `${onErrorPrefix}: HTTP ${res.status}`;          // build readable message (fallback to status)
+    const msg = getErrorMessage(text, `${onErrorPrefix}: HTTP ${res.status}`); // expose only the API's intended error message
     displayUserErrorSnackbar(msg);                                       // inform user in-app (snackbar)
     throw new Error(msg);                                                // propagate to caller for additional handling
   }

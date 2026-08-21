@@ -4,6 +4,7 @@
 import { parseHttpRequestJsonBody, sendHttpJsonResponse } from './vite.chat-proxy-data.js';
 import { shouldHandleAssistantReplyRequest, buildPromptData, getGoogleModels, fetchAssistantReplyText } from './vite.chat-proxy-helpers.js';
 import type { Plugin, ViteDevServer } from 'vite';
+import { AiUpstreamError } from './ai-upstream-error.js';
 
 export default function createChatProxyPlugin(): Plugin {                                                                   // creates the chat proxy Vite plugin, Vite reads this and adds plugin to the dev server
   // "Plugin" here means "extra behavior" added to the dev server
@@ -24,7 +25,8 @@ export default function createChatProxyPlugin(): Plugin {                       
           const assistantReplyText = await fetchAssistantReplyText(getGoogleModels(), promptText, googleApiKey, groqApiKey); // try Groq first, then Google
           if (!assistantReplyText) return sendHttpJsonResponse(httpResponse, 502, { error: 'Upstream error' });    // propagate upstream failure (bad gateway) if all models failed
           return sendHttpJsonResponse(httpResponse, 200, { reply: assistantReplyText });                           // respond to client with reply payload
-        } catch {                                                                                                  // shield internal errors in dev proxy
+        } catch (error) {                                                                                           // shield internal errors in dev proxy
+          if (error instanceof AiUpstreamError) return sendHttpJsonResponse(httpResponse, 502, { error: error.message });
           return sendHttpJsonResponse(httpResponse, 500, { error: 'Server error' });                               // generic error to the client
         }
       });
